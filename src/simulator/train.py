@@ -26,14 +26,14 @@ def parse_args():
     parser.add_argument(
         "--save-dir",
         type=str,
-        required=True,
+        default="./log/",
         help="direcotry to save the model.",
     )
     parser.add_argument("--seed", type=int, default=20, help="seed")
     parser.add_argument(
         "--total-timesteps",
         type=int,
-        default=100,
+        default=1000000,
         help="Total number of steps to be trained.",
     )
     parser.add_argument(
