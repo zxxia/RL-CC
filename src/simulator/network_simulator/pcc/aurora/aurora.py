@@ -1,3 +1,10 @@
+###########################################################################################
+# Implementation of Implicit Quantile Networks (IQN)
+# Author for codes: sungyubkim, Chu Kun(kun_chu@outlook.com)
+# Paper: https://arxiv.org/abs/1806.06923v1
+# Reference: https://github.com/sungyubkim/Deep_RL_with_pytorch
+###########################################################################################
+
 import csv
 import logging
 import multiprocessing as mp
@@ -16,7 +23,7 @@ import tensorflow as tf
 import tqdm
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-from stable_baselines import PPO1
+from stable_baselines import PPO1, logger
 from stable_baselines.common.callbacks import BaseCallback
 from stable_baselines.common.policies import FeedForwardPolicy
 
@@ -34,160 +41,225 @@ if type(tf.contrib) != types.ModuleType:  # if it is LazyLoader
 
 set_tf_loglevel(logging.FATAL)
 
-class MyPPO1(PPO1):
+import gym
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
+from replay_memory import ReplayBuffer, PrioritizedReplayBuffer
 
-    def predict(self, observation, state=None, mask=None, deterministic=False, saliency=False):
-        if state is None:
-            state = self.initial_state
-        if mask is None:
-            mask = [False for _ in range(self.n_envs)]
-        observation = np.array(observation)
-        vectorized_env = self._is_vectorized_observation(observation, self.observation_space)
+import random
+import os
+import pickle
+import time
+from collections import deque
+import matplotlib.pyplot as plt
 
-        observation = observation.reshape((-1,) + self.observation_space.shape)
-        grad = None
-        if deterministic and saliency:
-            actions, _, states, _, grad = self.step(observation, state, mask, deterministic=deterministic, saliency=saliency)
+# Parameters
+import argparse
+
+
+'''DQN settings'''
+# target policy sync interval
+TARGET_REPLACE_ITER = 1
+# simulator steps for start learning
+LEARN_START = int(1e+3)
+# (prioritized) experience replay memory size
+MEMORY_CAPACITY = int(1e+5)
+# simulator steps for learning interval
+LEARN_FREQ = 4
+# quantile numbers for IQN
+N_QUANT = 64
+# quantiles
+QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
+
+'''Environment Settings'''
+# number of environments for C51
+N_ENVS = 16
+# Total simulation step
+STEP_NUM = int(1e+8)
+# gamma for MDP
+GAMMA = 0.99
+
+
+'''Training settings'''
+# mini-batch size
+BATCH_SIZE = 32
+# learning rage
+LR = 1e-4
+# epsilon-greedy
+EPSILON = 1.0
+
+'''Save&Load Settings'''
+# check save/load
+SAVE = True
+LOAD = False
+# save frequency
+SAVE_FREQ = int(1e+3)
+# paths for predction net, target net, result log
+PRED_PATH = './data/model/iqn_pred_net.pkl'
+TARGET_PATH = './data/model/iqn_target_net.pkl'
+RESULT_PATH = './data/plots/iqn_result.pkl'
+
+# # define huber function
+# def huber(x):
+# 	cond = (c.abs()<1.0).float().detach()
+# 	return 0.5 * x.pow(2) * cond + (x.abs() - 0.5) * (1.0 - cond)
+
+class ConvNet(nn.Module):
+    def __init__(self):
+        super(ConvNet, self).__init__()
+
+        self.phi = nn.Linear(1, 30, bias=False)
+        self.phi_bias = nn.Parameter(torch.zeros(30))
+        self.fc = nn.Linear(30, 64)
+        
+        # action value distribution
+        self.fc_q = nn.Linear(64, 11) 
+        
+        # Initialization 
+        for m in self.modules():
+            nn.init.kaiming_normal_(m.weight)
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0.0)
+                
+            
+    def forward(self, x):
+        # Rand Initlialization
+        tau = torch.rand(N_QUANT, 1) # (N_QUANT, 1)
+        # Quants=[1,2,3,...,N_QUANT]
+        quants = torch.arange(0, N_QUANT, 1.0) # (N_QUANT,1)
+
+        # phi_j(tau) = RELU(sum(cos(π*i*τ)*w_ij + b_j))
+        cos_trans = torch.cos(quants * tau * 3.141592).unsqueeze(2) # (N_QUANT, N_QUANT, 1)
+        rand_feat = F.relu(self.phi(cos_trans).mean(dim=1) + self.phi_bias.unsqueeze(0)).unsqueeze(0) 
+        # (1, N_QUANT, 7 * 7 * 64)
+        x = x.view(x.size(0), -1).unsqueeze(1)  # (m, 1, 7 * 7 * 64)
+        # Zτ(x,a) ≈ f(ψ(x) @ φ(τ))a  @表示按元素相乘
+        x = x * rand_feat                       # (m, N_QUANT, 7 * 7 * 64)
+        x = F.relu(self.fc(x))                  # (m, N_QUANT, 512)
+        
+        # note that output of IQN is quantile values of value distribution
+        action_value = self.fc_q(x).transpose(1, 2) # (m, N_ACTIONS, N_QUANT)
+
+        return action_value, tau
+
+
+    def save(self, PATH):
+        torch.save(self.state_dict(),PATH)
+
+    def load(self, PATH):
+        self.load_state_dict(torch.load(PATH))
+
+class DQN(object):
+    def __init__(self):
+        self.pred_net, self.target_net = ConvNet(), ConvNet()
+        # sync evac target
+        self.update_target(self.target_net, self.pred_net, 1.0)
+            
+        # simulator step counter
+        self.memory_counter = 0
+        # target network step counter
+        self.learn_step_counter = 0
+
+        self.replay_buffer = ReplayBuffer(MEMORY_CAPACITY)
+        self.optimizer = torch.optim.Adam(self.pred_net.parameters(), lr=LR)
+        
+    # Update target network
+    def update_target(self, target, pred, update_rate):
+        # update target network parameters using predcition network
+        for target_param, pred_param in zip(target.parameters(), pred.parameters()):
+            target_param.data.copy_((1.0 - update_rate) \
+                                    * target_param.data + update_rate*pred_param.data)
+    
+    def save_model(self):
+        # save prediction network and target network
+        self.pred_net.save(PRED_PATH)
+        self.target_net.save(TARGET_PATH)
+
+    def load_model(self):
+        # load prediction network and target network
+        self.pred_net.load(PRED_PATH)
+        self.target_net.load(TARGET_PATH)
+
+    def choose_action(self, x, EPSILON):
+    	# x:state
+        x = torch.FloatTensor(x)
+        # logger.log(x.shape)
+
+        # epsilon-greedy
+        if np.random.uniform() >= EPSILON:
+            # greedy case
+            action_value, tau = self.pred_net(x) 	# (N_ENVS, N_ACTIONS, N_QUANT)
+            action_value = action_value.mean(dim=2)
+            action = torch.argmax(action_value, dim=1).data.cpu().numpy()
+            # logger.log(action)
         else:
-            actions, _, states, _ = self.step(observation, state, mask, deterministic=deterministic)
+            # random exploration case
+            action = np.random.randint(0, 11, (x.size(0)))
+        return action
 
-        clipped_actions = actions
-        # Clip the actions to avoid out of bound error
-        if isinstance(self.action_space, gym.spaces.Box):
-            clipped_actions = np.clip(actions, self.action_space.low, self.action_space.high)
+    def store_transition(self, s, a, r, s_, done):
+        self.memory_counter += 1
+        self.replay_buffer.add(s, a, r, s_, float(done))
 
-        if not vectorized_env:
-            if state is not None:
-                raise ValueError("Error: The environment must be vectorized when using recurrent policies.")
-            clipped_actions = clipped_actions[0]
+    def learn(self):
+        self.learn_step_counter += 1
+        # target parameter update
+        if self.learn_step_counter % TARGET_REPLACE_ITER == 0:
+            self.update_target(self.target_net, self.pred_net, 1e-2)
+    
+        b_s, b_a, b_r, b_s_, b_d = self.replay_buffer.sample(BATCH_SIZE)
+        b_w, b_idxes = np.ones_like(b_r), None
+            
+        b_s = torch.FloatTensor(b_s)
+        b_a = torch.LongTensor(b_a)
+        b_r = torch.FloatTensor(b_r)
+        b_s_ = torch.FloatTensor(b_s_)
+        b_d = torch.FloatTensor(b_d)
 
-        if deterministic and saliency:
-            return clipped_actions, states, grad
-        elif deterministic and saliency:
-            return clipped_actions, states
-        else:
-            return clipped_actions, states
+        # action value distribution prediction
+        q_eval, q_eval_tau = self.pred_net(b_s) 	# (m, N_ACTIONS, N_QUANT), (N_QUANT, 1)
+        mb_size = q_eval.size(0)
+        # squeeze去掉第一维
+        # torch.stack函数是将矩阵进行叠加，默认dim=0，即将[]中的n个矩阵变成n维
+        # index_select函数是进行索引查找。
+        q_eval = torch.stack([q_eval[i].index_select(0, b_a[i]) for i in range(mb_size)]).squeeze(1) 
+        # (m, N_QUANT)
+        # 在q_eval第二维后面加一个维度
+        q_eval = q_eval.unsqueeze(2) 				# (m, N_QUANT, 1)
+        # note that dim 1 is for present quantile, dim 2 is for next quantile
+        
+        # get next state value
+        q_next, q_next_tau = self.target_net(b_s_) 				# (m, N_ACTIONS, N_QUANT), (N_QUANT, 1)
+        best_actions = q_next.mean(dim=2).argmax(dim=1) 		# (m)
+        q_next = torch.stack([q_next[i].index_select(0, best_actions[i]) for i in range(mb_size)]).squeeze(1)
+        # q_nest: (m, N_QUANT)
+        # q_target = R + gamma * (1 - terminate) * q_next
+        q_target = b_r.unsqueeze(1) + GAMMA * (1. -b_d.unsqueeze(1)) * q_next 
+        # q_target: (m, N_QUANT)
+        # detach表示该Variable不更新参数
+        q_target = q_target.unsqueeze(1).detach() # (m , 1, N_QUANT)
 
-
-class MyMlpPolicy(FeedForwardPolicy):
-
-    def __init__(self, sess, ob_space, ac_space, n_env, n_steps, n_batch,
-                 reuse=False, **_kwargs):
-        super(MyMlpPolicy, self).__init__(sess, ob_space, ac_space, n_env,
-                                          n_steps, n_batch, reuse, net_arch=[
-                                              {"pi": [32, 16], "vf": [32, 16]}],
-                                          feature_extraction="mlp", **_kwargs)
-
-    def step(self, obs, state=None, mask=None, deterministic=False, saliency=False):
-        if deterministic:
-            action, value, neglogp = self.sess.run([self.deterministic_action, self.value_flat, self.neglogp],
-                                                   {self.obs_ph: obs})
-            if saliency:
-                grad = self.sess.run(tf.gradients(self.deterministic_action, self.obs_ph), {self.obs_ph: obs})[0]
-                return action, value, self.initial_state, neglogp, grad
-
-        else:
-            action, value, neglogp = self.sess.run([self.action, self.value_flat, self.neglogp],
-                                                   {self.obs_ph: obs})
-        return action, value, self.initial_state, neglogp
-
-class SaveOnBestTrainingRewardCallback(BaseCallback):
-    """
-    Callback for saving a model (the check is done every ``check_freq`` steps)
-    based on the training reward (in practice, we recommend using
-    ``EvalCallback``).
-
-    :param check_freq: (int)
-    :param log_dir: (str) Path to the folder where the model will be saved.
-      It must contains the file created by the ``Monitor`` wrapper.
-    :param verbose: (int)
-    """
-
-    def __init__(self, aurora, check_freq: int, log_dir: str, val_traces: List[Trace] = [],
-                 verbose=0, steps_trained=0, config_file: Union[str, None] =None):
-        super(SaveOnBestTrainingRewardCallback, self).__init__(verbose)
-        self.aurora = aurora
-        self.check_freq = check_freq
-        self.log_dir = log_dir
-        self.save_path = log_dir
-        self.best_mean_reward = -np.inf
-        self.val_traces = val_traces
-        self.config_file = config_file
-        if self.aurora.comm.Get_rank() == 0:
-            self.val_log_writer = csv.writer(
-                open(os.path.join(log_dir, 'validation_log.csv'), 'w', 1),
-                delimiter='\t', lineterminator='\n')
-            self.val_log_writer.writerow(
-                ['n_calls', 'num_timesteps', 'mean_validation_reward', 'mean_validation_pkt_level_reward', 'loss',
-                 'throughput', 'latency', 'sending_rate', 'tot_t_used(min)',
-                 'val_t_used(min)', 'train_t_used(min)'])
-
-            os.makedirs(os.path.join(log_dir, "validation_traces"), exist_ok=True)
-            for i, tr in enumerate(self.val_traces):
-                tr.dump(os.path.join(log_dir, "validation_traces", "trace_{}.json".format(i)))
-        else:
-            self.val_log_writer = None
-        self.best_val_reward = -np.inf
-        self.val_times = 0
-
-        self.t_start = time.time()
-        self.prev_t = time.time()
-        self.steps_trained = steps_trained
-
-    def _init_callback(self) -> None:
-        # Create folder if needed
-        if self.save_path is not None:
-            os.makedirs(self.save_path, exist_ok=True)
-
-    def _on_step(self) -> bool:
-        if self.n_calls % self.check_freq == 0:
-
-            if self.aurora.comm.Get_rank() == 0 and self.val_log_writer is not None:
-                model_path_to_save = os.path.join(self.save_path, "model_step_{}.ckpt".format(int(self.num_timesteps)))
-                with self.model.graph.as_default():
-                    saver = tf.train.Saver()
-                    saver.save(self.model.sess, model_path_to_save)
-                if not self.val_traces:
-                    return True
-                avg_tr_bw = []
-                avg_tr_min_rtt = []
-                avg_tr_loss = []
-                avg_rewards = []
-                avg_pkt_level_rewards = []
-                avg_losses = []
-                avg_tputs = []
-                avg_delays = []
-                avg_send_rates = []
-                val_start_t = time.time()
-
-                for idx, val_trace in enumerate(self.val_traces):
-                    avg_tr_bw.append(val_trace.avg_bw)
-                    avg_tr_min_rtt.append(val_trace.avg_bw)
-                    ts_list, val_rewards, loss_list, tput_list, delay_list, \
-                        send_rate_list, action_list, obs_list, mi_list, pkt_level_reward = self.aurora._test(
-                            val_trace, self.log_dir)
-                    avg_rewards.append(np.mean(np.array(val_rewards)))
-                    avg_losses.append(np.mean(np.array(loss_list)))
-                    avg_tputs.append(float(np.mean(np.array(tput_list))))
-                    avg_delays.append(np.mean(np.array(delay_list)))
-                    avg_send_rates.append(
-                        float(np.mean(np.array(send_rate_list))))
-                    avg_pkt_level_rewards.append(pkt_level_reward)
-                cur_t = time.time()
-                self.val_log_writer.writerow(
-                    map(lambda t: "%.3f" % t,
-                        [float(self.n_calls), float(self.num_timesteps),
-                         np.mean(np.array(avg_rewards)),
-                         np.mean(np.array(avg_pkt_level_rewards)),
-                         np.mean(np.array(avg_losses)),
-                         np.mean(np.array(avg_tputs)),
-                         np.mean(np.array(avg_delays)),
-                         np.mean(np.array(avg_send_rates)),
-                         (cur_t - self.t_start) / 60,
-                         (cur_t - val_start_t) / 60, (val_start_t - self.prev_t) / 60]))
-                self.prev_t = cur_t
-        return True
-
+        # quantile Huber loss
+        u = q_target.detach() - q_eval 		# (m, N_QUANT, N_QUANT)
+        tau = q_eval_tau.unsqueeze(0) 		# (1, N_QUANT, 1)
+        # note that tau is for present quantile
+        # w = |tau - delta(u<0)|
+        weight = torch.abs(tau - u.le(0.).float()) # (m, N_QUANT, N_QUANT)
+        loss = F.smooth_l1_loss(q_eval, q_target.detach(), reduction='none')
+        # (m, N_QUANT, N_QUANT)
+        loss = torch.mean(weight * loss, dim=1).mean(dim=1)
+        
+        # calculate importance weighted loss
+        b_w = torch.Tensor(b_w)
+        loss = torch.mean(b_w * loss)
+        
+        # backprop loss
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+        return loss
 
 class Aurora():
     cc_name = 'aurora'
@@ -205,31 +277,7 @@ class Aurora():
         # env = gym.make('AuroraEnv-v0', traces=[dummy_trace], train_flag=True)
         test_scheduler = TestScheduler(dummy_trace)
         env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
-        if pretrained_model_path:
-            self.model = MyPPO1(MyMlpPolicy, env, verbose=1, seed=seed,
-                              optim_stepsize=0.001, schedule='constant',
-                              timesteps_per_actorbatch=timesteps_per_actorbatch,
-                              optim_batchsize=int(
-                                  timesteps_per_actorbatch/12),
-                              optim_epochs=12, gamma=gamma,
-                              tensorboard_log=tensorboard_log,
-                              n_cpu_tf_sess=1)
-            with self.model.graph.as_default():
-                saver = tf.train.Saver()
-                saver.restore(self.model.sess, pretrained_model_path)
-            try:
-                self.steps_trained = int(os.path.splitext(
-                    pretrained_model_path)[0].split('_')[-1])
-            except:
-                self.steps_trained = 0
-        else:
-            self.model = MyPPO1(MyMlpPolicy, env, verbose=1, seed=seed,
-                              optim_stepsize=0.001, schedule='constant',
-                              timesteps_per_actorbatch=timesteps_per_actorbatch,
-                              optim_batchsize=int(timesteps_per_actorbatch/12),
-                              optim_epochs=12, gamma=gamma,
-                              tensorboard_log=tensorboard_log, n_cpu_tf_sess=1)
-        self.timesteps_per_actorbatch = timesteps_per_actorbatch
+        self.model = DQN()
 
     def train(self, config_file: str, total_timesteps: int,
               train_scheduler: Scheduler,
@@ -237,186 +285,79 @@ class Aurora():
               validation_traces: List[Trace] = [],
               # real_trace_prob: float = 0
               ):
-        assert isinstance(self.model, PPO1)
 
-        # generate validation traces
-        validation_traces = generate_traces(
-            config_file, 20, duration=30)
-
-        # Create the callback: check every n steps and save best model
-        self.callback = SaveOnBestTrainingRewardCallback(
-            self, check_freq=self.timesteps_per_actorbatch, log_dir=self.log_dir,
-            steps_trained=self.steps_trained, val_traces=validation_traces,
-            config_file=config_file)
         env = gym.make('AuroraEnv-v0', trace_scheduler=train_scheduler)
         env.seed(self.seed)
-        self.model.set_env(env)
-        self.model.learn(total_timesteps=total_timesteps,
-                         tb_log_name=tb_log_name, callback=self.callback)
 
-    def test_on_traces(self, traces: List[Trace], save_dirs: List[str]):
-        results = []
-        pkt_logs = []
-        for trace, save_dir in zip(traces, save_dirs):
-            ts_list, reward_list, loss_list, tput_list, delay_list, \
-                send_rate_list, action_list, obs_list, mi_list, pkt_log = self._test(
-                    trace, save_dir)
-            result = list(zip(ts_list, reward_list, send_rate_list, tput_list,
-                              delay_list, loss_list, action_list, obs_list, mi_list))
-            pkt_logs.append(pkt_log)
-            results.append(result)
-        return results, pkt_logs
+        dqn = DQN()
 
-    def _test(self, trace: Trace, save_dir: str, plot_flag: bool = False, saliency: bool = False):
-        reward_list = []
-        loss_list = []
-        tput_list = []
-        delay_list = []
-        send_rate_list = []
-        ts_list = []
-        action_list = []
-        mi_list = []
-        obs_list = []
-        if save_dir:
-            os.makedirs(save_dir, exist_ok=True)
-            f_sim_log = open(os.path.join(save_dir, 'aurora_simulation_log.csv'), 'w', 1)
-            writer = csv.writer(f_sim_log, lineterminator='\n')
-            writer.writerow(['timestamp', "target_send_rate", "send_rate",
-                             'recv_rate', 'latency',
-                             'loss', 'reward', "action", "bytes_sent",
-                             "bytes_acked", "bytes_lost", "MI",
-                             "send_start_time",
-                             "send_end_time", 'recv_start_time',
-                             'recv_end_time', 'latency_increase',
-                             "packet_size", 'min_lat', 'sent_latency_inflation',
-                             'latency_ratio', 'send_ratio',
-                             'bandwidth', "queue_delay",
-                             'packet_in_queue', 'queue_size', "recv_ratio", "srtt"])
+        # model load with check
+        if LOAD and os.path.isfile(PRED_PATH) and os.path.isfile(TARGET_PATH):
+            dqn.load_model()
+            pkl_file = open(RESULT_PATH,'rb')
+            result = pickle.load(pkl_file)
+            pkl_file.close()
+            logger.log('Load complete!')
         else:
-            f_sim_log = None
-            writer = None
-        test_scheduler = TestScheduler(trace)
-        env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler,
-                       record_pkt_log=self.record_pkt_log)
-        env.seed(self.seed)
-        obs = env.reset()
-        grads = []  # gradients for saliency map
-        while True:
-            if env.net.senders[0].got_data:
-                if saliency:
-                    action, _states, grad = self.model.predict(
-                        obs, deterministic=True, saliency=saliency)
-                    grads.append(grad)
-                else:
-                    action, _states = self.model.predict(
-                        obs, deterministic=True)
-            else:
-                action = np.array([0])
+            result = []
+            logger.log('Initialize results!')
 
-            # get the new MI and stats collected in the MI
-            # sender_mi = env.senders[0].get_run_data()
-            sender_mi = env.senders[0].history.back() #get_run_data()
-            throughput = sender_mi.get("recv rate")  # bits/sec
-            send_rate = sender_mi.get("send rate")  # bits/sec
-            latency = sender_mi.get("avg latency")
-            loss = sender_mi.get("loss ratio")
-            avg_queue_delay = sender_mi.get('avg queue delay')
-            sent_latency_inflation = sender_mi.get('sent latency inflation')
-            latency_ratio = sender_mi.get('latency ratio')
-            send_ratio = sender_mi.get('send ratio')
-            recv_ratio = sender_mi.get('recv ratio')
-            reward = pcc_aurora_reward(
-                throughput / BITS_PER_BYTE / BYTES_PER_PACKET, latency, loss,
-                trace.avg_bw * 1e6 / BITS_PER_BYTE / BYTES_PER_PACKET,
-                trace.avg_delay * 2 / 1e3)
-            if save_dir and writer:
-                writer.writerow([
-                    round(env.net.get_cur_time(), 6), round(env.senders[0].pacing_rate * BITS_PER_BYTE, 0),
-                    round(send_rate, 0), round(throughput, 0), round(latency, 6), loss,
-                    round(reward, 4), action.item(), sender_mi.bytes_sent, sender_mi.bytes_acked,
-                    sender_mi.bytes_lost, round(sender_mi.send_end, 6) - round(sender_mi.send_start, 6),
-                    round(sender_mi.send_start, 6), round(sender_mi.send_end, 6),
-                    round(sender_mi.recv_start, 6), round(sender_mi.recv_end, 6),
-                    sender_mi.get('latency increase'), sender_mi.packet_size,
-                    sender_mi.get('conn min latency'), sent_latency_inflation,
-                    latency_ratio, send_ratio,
-                    env.links[0].get_bandwidth(
-                        env.net.get_cur_time()) * BYTES_PER_PACKET * BITS_PER_BYTE,
-                    avg_queue_delay, env.links[0].pkt_in_queue, env.links[0].queue_size,
-                    recv_ratio, env.senders[0].srtt])
-            reward_list.append(reward)
-            loss_list.append(loss)
-            delay_list.append(latency * 1000)
-            tput_list.append(throughput / 1e6)
-            send_rate_list.append(send_rate / 1e6)
-            ts_list.append(env.net.get_cur_time())
-            action_list.append(action.item())
-            mi_list.append(sender_mi.send_end - sender_mi.send_start)
-            obs_list.append(obs.tolist())
-            obs, rewards, dones, info = env.step(action.item())
+        logger.log('Collecting experience...')
 
-            if dones:
-                break
-        if f_sim_log:
-            f_sim_log.close()
-        if self.record_pkt_log and save_dir:
-            with open(os.path.join(save_dir, "aurora_packet_log.csv"), 'w', 1) as f:
-                pkt_logger = csv.writer(f, lineterminator='\n')
-                pkt_logger.writerow(['timestamp', 'packet_event_id', 'event_type',
-                                     'bytes', 'cur_latency', 'queue_delay',
-                                     'packet_in_queue', 'sending_rate', 'bandwidth'])
-                pkt_logger.writerows(env.net.pkt_log)
-        avg_sending_rate = env.senders[0].avg_sending_rate
-        tput = env.senders[0].avg_throughput
-        avg_lat = env.senders[0].avg_latency
-        loss = env.senders[0].pkt_loss_rate
-        pkt_level_reward = pcc_aurora_reward(tput, avg_lat,loss,
-            avg_bw=trace.avg_bw * 1e6 / BITS_PER_BYTE / BYTES_PER_PACKET)
-        pkt_level_original_reward = pcc_aurora_reward(tput, avg_lat, loss)
-        if plot_flag and save_dir:
-            plot_simulation_log(trace, os.path.join(save_dir, 'aurora_simulation_log.csv'), save_dir, self.cc_name)
-            bin_tput_ts, bin_tput = env.senders[0].bin_tput
-            bin_sending_rate_ts, bin_sending_rate = env.senders[0].bin_sending_rate
-            lat_ts, lat = env.senders[0].latencies
-            plot(trace, bin_tput_ts, bin_tput, bin_sending_rate_ts,
-                 bin_sending_rate, tput * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6,
-                 avg_sending_rate * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6,
-                 lat_ts, lat, avg_lat * 1000, loss, pkt_level_original_reward,
-                 pkt_level_reward, save_dir, self.cc_name)
-        if save_dir:
-            with open(os.path.join(save_dir, "{}_summary.csv".format(self.cc_name)), 'w', 1) as f:
-                summary_writer = csv.writer(f, lineterminator='\n')
-                summary_writer.writerow([
-                    'trace_average_bandwidth', 'trace_average_latency',
-                    'average_sending_rate', 'average_throughput',
-                    'average_latency', 'loss_rate', 'mi_level_reward',
-                    'pkt_level_reward'])
-                summary_writer.writerow(
-                    [trace.avg_bw, trace.avg_delay,
-                     avg_sending_rate * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6,
-                     tput * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6, avg_lat,
-                     loss, np.mean(reward_list), pkt_level_reward])
+        # episode step for accumulate reward 
+        epinfobuf = deque(maxlen=100)
+        # check learning time
+        start_time = time.time()
 
-            if saliency:
-                with open(os.path.join(save_dir, "saliency.npy"), 'wb') as f:
-                    np.save(f, np.concatenate(grads))
+        # env reset
+        s = np.array(env.reset())
 
-        return ts_list, reward_list, loss_list, tput_list, delay_list, send_rate_list, action_list, obs_list, mi_list, pkt_level_reward
+        for step in range(1, STEP_NUM//N_ENVS+1):
+            a = dqn.choose_action(s, EPSILON)
 
-    def test(self, trace: Trace, save_dir: str, plot_flag: bool = False, saliency: bool = False) -> Tuple[float, float]:
-        _, reward_list, _, _, _, _, _, _, _, pkt_level_reward = self._test(trace, save_dir, plot_flag, saliency)
-        return np.mean(reward_list), pkt_level_reward
+            # take action and get next state
+            s_, r, done, infos = env.step(a)
+            for info in infos:
+                maybeepinfo = info.get('episode')
+                if maybeepinfo: epinfobuf.append(maybeepinfo)
+            s_ = np.array(s_)
 
-def test_on_trace(model_path: str, trace: Trace, save_dir: str, seed: int,
-                  record_pkt_log: bool = False, plot_flag: bool = False):
-    rl = Aurora(seed=seed, log_dir="", pretrained_model_path=model_path,
-                timesteps_per_actorbatch=10, record_pkt_log=record_pkt_log)
-    return rl.test(trace, save_dir, plot_flag)
+            # clip rewards for numerical stability
+            clip_r = np.sign(r)
 
-def test_on_traces(model_path: str, traces: List[Trace], save_dirs: List[str],
-                   nproc: int, seed: int, record_pkt_log: bool, plot_flag: bool):
-    arguments = [(model_path, trace, save_dir, seed, record_pkt_log, plot_flag)
-                 for trace, save_dir in zip(traces, save_dirs)]
-    with mp.Pool(processes=nproc) as pool:
-        results = pool.starmap(test_on_trace, tqdm.tqdm(arguments, total=len(arguments)))
-    return results
+            # store the transition
+            for i in range(N_ENVS):
+                dqn.store_transition(s[i], a[i], clip_r[i], s_[i], done[i])
+
+            # annealing the epsilon(exploration strategy)
+            if step <= int(1e+4):
+                EPSILON -= 0.9/1e+4
+            elif step <= int(2e+4):
+                EPSILON -= 0.09/1e+4
+
+            # if memory fill 50K and mod 4 = 0(for speed issue), learn pred net
+            if (LEARN_START <= dqn.memory_counter) and (dqn.memory_counter % LEARN_FREQ == 0):
+                loss = dqn.learn()
+
+            # logger.log log and save
+            if step % SAVE_FREQ == 0:
+                # check time interval
+                time_interval = round(time.time() - start_time, 2)
+                # calc mean return
+                mean_100_ep_return = round(np.mean([epinfo['r'] for epinfo in epinfobuf]),2)
+                result.append(mean_100_ep_return)
+                # logger.log log
+                logger.log('Used Step: ',dqn.memory_counter,
+                    '| EPS: ', round(EPSILON, 3),
+                    # '| Loss: ', loss,
+                    '| Mean ep 100 return: ', mean_100_ep_return,
+                    '| Used Time:',time_interval)
+                # save model
+                dqn.save_model()
+                pkl_file = open(RESULT_PATH, 'wb')
+                pickle.dump(np.array(result), pkl_file)
+                pkl_file.close()
+
+            s = s_
+
+        logger.log("The training is done!")
