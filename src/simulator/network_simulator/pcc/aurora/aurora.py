@@ -9,6 +9,7 @@ import csv
 import logging
 import multiprocessing as mp
 import os
+from syslog import LOG_SYSLOG
 import time
 import types
 from typing import List, Tuple, Union
@@ -323,6 +324,8 @@ class Aurora():
 
         EPSILON = 1.0
         done = False
+        totalR = 0
+        numberR = 0
 
         for step in range(1, STEP_NUM+1):
             if done:
@@ -336,6 +339,9 @@ class Aurora():
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfobuf.append(maybeepinfo)
             s_ = np.array(s_)
+
+            totalR += r
+            numberR += 1
 
             # clip rewards for numerical stability
             clip_r = np.sign(r)
@@ -362,17 +368,18 @@ class Aurora():
                 result.append(mean_100_ep_return)
                 # logger.log log
                 logger.log('Used Step: ',dqn.memory_counter,
-                    '| Action: ', a,
-                    '| State: ', s,
                     '| EPS: ', round(EPSILON, 3),
                     '| Loss: ', loss,
-                    '| Mean ep 100 return: ', r,
+                    '| Mean ep 100 return: ', totalR / numberR,
                     '| Used Time:',time_interval)
                 # save model
                 #dqn.save_model()
                 #pkl_file = open(RESULT_PATH, 'wb')
                 #pickle.dump(np.array(result), pkl_file)
                 #pkl_file.close()
+
+                totalR = 0
+                numberR = 0
 
             s = s_
 
