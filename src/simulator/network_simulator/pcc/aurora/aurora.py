@@ -120,9 +120,10 @@ class ConvNet(nn.Module):
         
         # Initialization 
         for m in self.modules():
-            nn.init.kaiming_normal_(m.weight)
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0.0)
+            if isinstance(m, nn.Linear):
+                nn.init.kaiming_normal_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0.0)
                 
             
     def forward(self, x):
