@@ -334,6 +334,7 @@ class Aurora():
 
         # check learning time
         start_time = time.time()
+        number = 0
 
         EPSILON = 1.0
         # Total simulation step
@@ -355,14 +356,16 @@ class Aurora():
                 # clip rewards for numerical stability
                 clip_r = np.sign(r)
 
+                # annealing the epsilon(exploration strategy)
+                if number <= int(1e+4):
+                    EPSILON -= 0.9/1e+4
+                elif number <= int(2e+4):
+                    EPSILON -= 0.09/1e+4
+                
+                number += 1
+
                 # store the transition
                 dqn.store_transition(s, a, clip_r, s_, done)
-
-                # annealing the epsilon(exploration strategy)
-                if step <= int(1e+4):
-                    EPSILON -= 0.9/1e+4
-                elif step <= int(2e+4):
-                    EPSILON -= 0.09/1e+4
 
                 # if memory fill 50K and mod 4 = 0(for speed issue), learn pred net
                 if (LEARN_START <= dqn.memory_counter) and (dqn.memory_counter % LEARN_FREQ == 0):
