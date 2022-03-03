@@ -322,8 +322,12 @@ class Aurora():
         s = np.array(env.reset())
 
         EPSILON = 1.0
+        done = False
 
         for step in range(1, STEP_NUM+1):
+            if done:
+                s = np.array(env.reset())
+                
             a = dqn.choose_action(s, EPSILON)
 
             # take action and get next state
