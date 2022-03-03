@@ -31,6 +31,7 @@ from simulator.network_simulator.pcc.aurora import aurora_environment
 from simulator.network_simulator.pcc.aurora.schedulers import Scheduler, TestScheduler
 from simulator.network_simulator.constants import BITS_PER_BYTE, BYTES_PER_PACKET
 from simulator.trace import generate_trace, Trace, generate_traces
+from simulator.network_simulator.pcc.aurora.replay_memory import ReplayBuffer, PrioritizedReplayBuffer
 from common.utils import set_tf_loglevel, pcc_aurora_reward
 from plot_scripts.plot_packet_log import plot
 from plot_scripts.plot_time_series import plot as plot_simulation_log
@@ -46,7 +47,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
-from replay_memory import ReplayBuffer, PrioritizedReplayBuffer
+
 
 import random
 import os
