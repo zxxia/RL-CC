@@ -88,8 +88,7 @@ GAMMA = 0.99
 BATCH_SIZE = 32
 # learning rage
 LR = 1e-4
-# epsilon-greedy
-EPSILON = 1.0
+
 
 '''Save&Load Settings'''
 # check save/load
@@ -313,6 +312,8 @@ class Aurora():
 
         # env reset
         s = np.array(env.reset())
+
+        EPSILON = 1.0
 
         for step in range(1, STEP_NUM//N_ENVS+1):
             a = dqn.choose_action(s, EPSILON)
