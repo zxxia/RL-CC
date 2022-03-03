@@ -136,28 +136,7 @@ def main():
     training_traces = []
     val_traces = []
 
-    if not os.path.isfile("./validation/19"):
-        validation_traces = generate_traces(
-            config_file, 20, duration=30)
-        for i in range(20):
-            validation_traces[i].dump("./validation/" + str(i))
-        
-    if args.validation and args.val_trace_file:
-            with open(args.val_trace_file, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    if args.dataset == "pantheon":
-                        queue = 100  # dummy value
-                        val_traces.append(
-                            Trace.load_from_pantheon_file(
-                                line, queue=queue, loss=0
-                            )
-                        )
-                    elif args.dataset == "synthetic":
-                        val_traces.append(Trace.load_from_file(line))
-                    else:
-                        raise ValueError
-
+    
     if args.curriculum == "udr":
         config_file = args.config_file
         if args.train_trace_file:
@@ -165,6 +144,12 @@ def main():
                 for line in f:
                     line = line.strip()
                     training_traces.append(Trace.load_from_file(line))
+
+        if not os.path.isfile("./validation/19"):
+            validation_traces = generate_traces(
+                config_file, 20, duration=30)
+            for i in range(20):
+                validation_traces[i].dump("./validation/" + str(i))
 
         train_scheduler = UDRTrainScheduler(
             config_file,
