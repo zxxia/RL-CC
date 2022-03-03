@@ -197,7 +197,7 @@ class DQN(object):
             # logger.log(action)
         else:
             # random exploration case
-            action = np.random.randint(0, 11, (x.size(0)))
+            action = np.random.randint(0, 11, 1)
         return action
 
     def store_transition(self, s, a, r, s_, done):
