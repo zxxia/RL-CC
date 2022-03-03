@@ -359,8 +359,8 @@ class Aurora():
                 # logger.log log
                 logger.log('Used Step: ',dqn.memory_counter,
                     '| EPS: ', round(EPSILON, 3),
-                    # '| Loss: ', loss,
-                    '| Mean ep 100 return: ', mean_100_ep_return,
+                    '| Loss: ', loss,
+                    '| Mean ep 100 return: ', r,
                     '| Used Time:',time_interval)
                 # save model
                 #dqn.save_model()
