@@ -138,6 +138,8 @@ class ConvNet(nn.Module):
         # (1, N_QUANT, 7 * 7 * 64)
         # x = x.view(x.size(0), -1).unsqueeze(1)  # (m, 1, 7 * 7 * 64)
         # Zτ(x,a) ≈ f(ψ(x) @ φ(τ))a  @表示按元素相乘
+        logger.log(x)
+        logger.log(rand_feat.shape)
         x = x * rand_feat                       # (m, N_QUANT, 7 * 7 * 64)
         x = F.relu(self.fc(x))                  # (m, N_QUANT, 512)
         
@@ -197,7 +199,6 @@ class DQN(object):
         else:
             # random exploration case
             action = np.random.randint(0, 11)
-
         return action
 
     def store_transition(self, s, a, r, s_, done):
