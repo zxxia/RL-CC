@@ -191,9 +191,13 @@ class DQN(object):
         # epsilon-greedy
         if np.random.uniform() >= EPSILON:
             # greedy case
+            logger.log(x)
             action_value, tau = self.pred_net(x) 	# (N_ENVS, N_ACTIONS, N_QUANT)
+            logger.log(action_value)
             action_value = action_value.mean(dim=2)
+            logger.log(action_value)
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
+            logger.log(action)
         else:
             # random exploration case
             action = np.random.randint(0, 11)
