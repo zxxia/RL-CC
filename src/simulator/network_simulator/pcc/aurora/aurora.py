@@ -329,6 +329,12 @@ class Aurora():
             # clip rewards for numerical stability
             clip_r = np.sign(r)
 
+            logger.log(s)
+            logger.log(a)
+            logger.log(clip_r)
+            logger.log(s_)
+            logger.log(done)
+            
             # store the transition
             dqn.store_transition(s[0], a[0], clip_r[0], s_[0], done[0])
 
