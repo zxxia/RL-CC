@@ -137,12 +137,16 @@ class ConvNet(nn.Module):
         rand_feat = F.relu(self.phi(cos_trans).mean(dim=1) + self.phi_bias.unsqueeze(0)).unsqueeze(0) 
         # (1, N_QUANT, 7 * 7 * 64)
         x = x.view(x.size(0), -1).unsqueeze(1)  # (m, 1, 7 * 7 * 64)
+        logger.log(x)
         # Zτ(x,a) ≈ f(ψ(x) @ φ(τ))a  @表示按元素相乘
         x = x * rand_feat                       # (m, N_QUANT, 7 * 7 * 64)
+        logger.log(x)
         x = F.relu(self.fc(x))                  # (m, N_QUANT, 512)
+        logger.log(x)
         
         # note that output of IQN is quantile values of value distribution
         action_value = self.fc_q(x).transpose(1, 2) # (m, N_ACTIONS, N_QUANT)
+        logger.log(action_value)
 
         return action_value, tau
 
