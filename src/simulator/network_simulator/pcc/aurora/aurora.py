@@ -327,7 +327,7 @@ class Aurora():
         for step in range(1, STEP_NUM+1):
             if done:
                 s = np.array(env.reset())
-                
+
             a = dqn.choose_action(s, EPSILON)
 
             # take action and get next state
@@ -362,6 +362,8 @@ class Aurora():
                 result.append(mean_100_ep_return)
                 # logger.log log
                 logger.log('Used Step: ',dqn.memory_counter,
+                    '| Action: ', a,
+                    '| State: ', s,
                     '| EPS: ', round(EPSILON, 3),
                     '| Loss: ', loss,
                     '| Mean ep 100 return: ', r,
