@@ -339,7 +339,7 @@ class Aurora():
         # Total simulation step
         STEP_NUM = int(1e+5)
         # save frequency
-        SAVE_FREQ = int(1e+3)
+        SAVE_FREQ = int(2e+2)
 
         for step in range(1, STEP_NUM+1):
             done = False
@@ -370,14 +370,13 @@ class Aurora():
                 
                 s = s_
 
-            if step % 10 == 0:
+            if step % 20 == 0:
                 # check time interval
                 time_interval = round(time.time() - start_time, 2)
 
                 # logger.log log
                 logger.log('Used Step: ',dqn.memory_counter,
                     '| EPS: ', round(EPSILON, 3),
-                    '| Loss: ', loss,
                     '| Used Time:',time_interval)
 
 
