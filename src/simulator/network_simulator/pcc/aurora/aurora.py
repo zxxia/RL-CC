@@ -187,18 +187,21 @@ class DQN(object):
     def choose_action(self, x, EPSILON):
     	# x:state
         x = torch.FloatTensor(x)
-        # logger.log(x.shape)
+        logger.log(x.shape)
 
         # epsilon-greedy
         if np.random.uniform() >= EPSILON:
             # greedy case
             action_value, tau = self.pred_net(x) 	# (N_ENVS, N_ACTIONS, N_QUANT)
+            logger.log(action_value)
             action_value = action_value.mean(dim=2)
+            logger.log(action_value)
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
-            # logger.log(action)
         else:
             # random exploration case
             action = np.random.randint(0, 11, 1)
+        
+        logger.log(action)
         return action
 
     def store_transition(self, s, a, r, s_, done):
