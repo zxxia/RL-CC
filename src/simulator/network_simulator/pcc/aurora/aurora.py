@@ -75,8 +75,6 @@ N_QUANT = 64
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
 '''Environment Settings'''
-# number of environments for C51
-N_ENVS = 16
 # Total simulation step
 STEP_NUM = int(1e+8)
 # gamma for MDP
@@ -100,6 +98,9 @@ SAVE_FREQ = int(1e+3)
 PRED_PATH = './data/model/iqn_pred_net.pkl'
 TARGET_PATH = './data/model/iqn_target_net.pkl'
 RESULT_PATH = './data/plots/iqn_result.pkl'
+
+
+ACTION_MAP = [-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1]
 
 # # define huber function
 # def huber(x):
@@ -315,11 +316,11 @@ class Aurora():
 
         EPSILON = 1.0
 
-        for step in range(1, STEP_NUM//N_ENVS+1):
+        for step in range(1, STEP_NUM+1):
             a = dqn.choose_action(s, EPSILON)
-            logger.log(a)
+
             # take action and get next state
-            s_, r, done, infos = env.step(a)
+            s_, r, done, infos = env.step(ACTION_MAP[int(a)])
             for info in infos:
                 maybeepinfo = info.get('episode')
                 if maybeepinfo: epinfobuf.append(maybeepinfo)
@@ -329,8 +330,7 @@ class Aurora():
             clip_r = np.sign(r)
 
             # store the transition
-            for i in range(N_ENVS):
-                dqn.store_transition(s[i], a[i], clip_r[i], s_[i], done[i])
+            dqn.store_transition(s[0], a[0], clip_r[0], s_[0], done[0])
 
             # annealing the epsilon(exploration strategy)
             if step <= int(1e+4):
