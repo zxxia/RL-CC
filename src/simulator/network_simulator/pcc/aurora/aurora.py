@@ -206,7 +206,7 @@ class DQN(object):
         else:
             # random exploration case
             action = np.random.randint(0, 11)
-        return action
+        return int(action)
 
     def store_transition(self, s, a, r, s_, done):
         self.memory_counter += 1
