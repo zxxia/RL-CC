@@ -203,7 +203,7 @@ class DQN(object):
             action = torch.argmax(action_value, dim=0).data.cpu().numpy()
         else:
             # random exploration case
-            action = np.random.randint(0, 11, 1)
+            action = np.random.randint(0, 11)
         
         logger.log(action)
         return action
@@ -337,7 +337,7 @@ class Aurora():
             clip_r = np.sign(r)
 
             # store the transition
-            dqn.store_transition(s, a[0], clip_r, s_, done)
+            dqn.store_transition(s, a, clip_r, s_, done)
 
             # annealing the epsilon(exploration strategy)
             if step <= int(1e+4):
