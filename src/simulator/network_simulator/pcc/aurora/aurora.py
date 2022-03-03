@@ -269,7 +269,7 @@ class DQN(object):
 def Validation(traces, dqn):
     totalR = 0
     numberR = 0
-    
+
     for trace in traces:
         test_scheduler = TestScheduler(trace)
         env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
@@ -339,7 +339,7 @@ class Aurora():
         # Total simulation step
         STEP_NUM = int(1e+5)
         # save frequency
-        SAVE_FREQ = int(1e+4)
+        SAVE_FREQ = int(1e+3)
 
         for step in range(1, STEP_NUM+1):
             done = False
