@@ -317,7 +317,7 @@ class Aurora():
 
         for step in range(1, STEP_NUM//N_ENVS+1):
             a = dqn.choose_action(s, EPSILON)
-
+            logger.log(a)
             # take action and get next state
             s_, r, done, infos = env.step(a)
             for info in infos:
