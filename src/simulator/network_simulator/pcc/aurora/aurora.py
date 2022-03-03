@@ -76,8 +76,6 @@ N_QUANT = 64
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
 '''Environment Settings'''
-# Total simulation step
-STEP_NUM = int(1e+8)
 # gamma for MDP
 GAMMA = 0.99
 
@@ -93,12 +91,9 @@ LR = 1e-4
 # check save/load
 SAVE = True
 LOAD = False
-# save frequency
-SAVE_FREQ = int(1e+3)
 # paths for predction net, target net, result log
-PRED_PATH = './data/model/iqn_pred_net.pkl'
-TARGET_PATH = './data/model/iqn_target_net.pkl'
-RESULT_PATH = './data/plots/iqn_result.pkl'
+PRED_PATH = './model/iqn_pred_net.pkl'
+TARGET_PATH = './model/iqn_target_net.pkl'
 
 
 ACTION_MAP = [-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1]
@@ -271,6 +266,27 @@ class DQN(object):
         self.optimizer.step()
         return loss
 
+def Validation(traces, dqn):
+    totalR = 0
+    numberR = 0
+    
+    for trace in traces:
+        test_scheduler = TestScheduler(trace)
+        env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
+
+        done = False
+        s = np.array(env.reset())
+
+        while not done:
+            a = dqn.choose_action(s, 0)
+            s, r, done, infos = env.step(ACTION_MAP[int(a)])
+
+            totalR += r
+            numberR += 1
+        
+    return totalR / numberR
+
+
 class Aurora():
     cc_name = 'aurora'
     def __init__(self, seed: int, log_dir: str, timesteps_per_actorbatch: int,
@@ -300,13 +316,15 @@ class Aurora():
         env.seed(self.seed)
 
         dqn = DQN()
+        test_reward = 0
+
+        validation_traces = []
+        for i in range(20):
+            validation_traces.append(Trace.load_from_file("./validation/" + str(i)))
 
         # model load with check
         if LOAD and os.path.isfile(PRED_PATH) and os.path.isfile(TARGET_PATH):
             dqn.load_model()
-            pkl_file = open(RESULT_PATH,'rb')
-            result = pickle.load(pkl_file)
-            pkl_file.close()
             logger.log('Load complete!')
         else:
             result = []
@@ -314,73 +332,59 @@ class Aurora():
 
         logger.log('Collecting experience...')
 
-        # episode step for accumulate reward 
-        epinfobuf = deque(maxlen=100)
         # check learning time
         start_time = time.time()
 
-        # env reset
-        s = np.array(env.reset())
-
         EPSILON = 1.0
-        done = False
-        totalR = 0
-        numberR = 0
+        # Total simulation step
+        STEP_NUM = int(1e+5)
+        # save frequency
+        SAVE_FREQ = int(1e+4)
 
         for step in range(1, STEP_NUM+1):
-            if done:
-                s = np.array(env.reset())
+            done = False
+            s = np.array(env.reset())
 
-            a = dqn.choose_action(s, EPSILON)
+            while not done:
+                a = dqn.choose_action(s, EPSILON)
 
-            # take action and get next state
-            s_, r, done, infos = env.step(ACTION_MAP[int(a)])
-            for info in infos:
-                maybeepinfo = info.get('episode')
-                if maybeepinfo: epinfobuf.append(maybeepinfo)
-            s_ = np.array(s_)
+                # take action and get next state
+                s_, r, done, infos = env.step(ACTION_MAP[int(a)])
+                s_ = np.array(s_)
 
-            totalR += r
-            numberR += 1
+                # clip rewards for numerical stability
+                clip_r = np.sign(r)
 
-            # clip rewards for numerical stability
-            clip_r = np.sign(r)
+                # store the transition
+                dqn.store_transition(s, a, clip_r, s_, done)
 
-            # store the transition
-            dqn.store_transition(s, a, clip_r, s_, done)
+                # annealing the epsilon(exploration strategy)
+                if step <= int(1e+4):
+                    EPSILON -= 0.9/1e+4
+                elif step <= int(2e+4):
+                    EPSILON -= 0.09/1e+4
 
-            # annealing the epsilon(exploration strategy)
-            if step <= int(1e+4):
-                EPSILON -= 0.9/1e+4
-            elif step <= int(2e+4):
-                EPSILON -= 0.09/1e+4
-
-            # if memory fill 50K and mod 4 = 0(for speed issue), learn pred net
-            if (LEARN_START <= dqn.memory_counter) and (dqn.memory_counter % LEARN_FREQ == 0):
-                loss = dqn.learn()
+                # if memory fill 50K and mod 4 = 0(for speed issue), learn pred net
+                if (LEARN_START <= dqn.memory_counter) and (dqn.memory_counter % LEARN_FREQ == 0):
+                    loss = dqn.learn()
+                
+                s = s_
 
             # logger.log log and save
             if step % SAVE_FREQ == 0:
+                validation_reward = Validation(validation_traces, dqn)
+
+                if validation_reward > test_reward:
+                    test_reward = validation_reward
+                    dqn.save_model()
+
                 # check time interval
                 time_interval = round(time.time() - start_time, 2)
-                # calc mean return
-                mean_100_ep_return = round(np.mean([epinfo['r'] for epinfo in epinfobuf]),2)
-                result.append(mean_100_ep_return)
                 # logger.log log
                 logger.log('Used Step: ',dqn.memory_counter,
                     '| EPS: ', round(EPSILON, 3),
                     '| Loss: ', loss,
-                    '| Mean ep 100 return: ', totalR / numberR,
+                    '| Mean ep 100 return: ', validation_reward,
                     '| Used Time:',time_interval)
-                # save model
-                #dqn.save_model()
-                #pkl_file = open(RESULT_PATH, 'wb')
-                #pickle.dump(np.array(result), pkl_file)
-                #pkl_file.close()
-
-                totalR = 0
-                numberR = 0
-
-            s = s_
 
         logger.log("The training is done!")

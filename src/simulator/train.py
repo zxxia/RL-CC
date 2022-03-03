@@ -11,7 +11,7 @@ from simulator.network_simulator.pcc.aurora.schedulers import (
     CL1TrainScheduler,
     CL2TrainScheduler,
 )
-from simulator.trace import Trace
+from simulator.trace import Trace, generate_traces
 from common.utils import set_seed, save_args
 
 warnings.filterwarnings("ignore")
@@ -135,15 +135,14 @@ def main():
     # training_traces, validation_traces,
     training_traces = []
     val_traces = []
-    if args.curriculum == "udr":
-        config_file = args.config_file
-        if args.train_trace_file:
-            with open(args.train_trace_file, "r") as f:
-                for line in f:
-                    line = line.strip()
-                    training_traces.append(Trace.load_from_file(line))
 
-        if args.validation and args.val_trace_file:
+    if not os.path.isfile("./validation/19"):
+        validation_traces = generate_traces(
+            config_file, 20, duration=30)
+        for i in range(20):
+            validation_traces[i].dump("./validation/" + str(i))
+        
+    if args.validation and args.val_trace_file:
             with open(args.val_trace_file, "r") as f:
                 for line in f:
                     line = line.strip()
@@ -158,6 +157,15 @@ def main():
                         val_traces.append(Trace.load_from_file(line))
                     else:
                         raise ValueError
+
+    if args.curriculum == "udr":
+        config_file = args.config_file
+        if args.train_trace_file:
+            with open(args.train_trace_file, "r") as f:
+                for line in f:
+                    line = line.strip()
+                    training_traces.append(Trace.load_from_file(line))
+
         train_scheduler = UDRTrainScheduler(
             config_file,
             training_traces,
