@@ -134,17 +134,15 @@ class ConvNet(nn.Module):
 
         # phi_j(tau) = RELU(sum(cos(π*i*τ)*w_ij + b_j))
         cos_trans = torch.cos(quants * tau * 3.141592).unsqueeze(2) # (N_QUANT, N_QUANT, 1)
-        rand_feat = F.relu(self.phi(cos_trans).mean(dim=1) + self.phi_bias.unsqueeze(0))
+        rand_feat = F.relu(self.phi(cos_trans).mean(dim=1) + self.phi_bias.unsqueeze(0)).unsqueeze(0) 
         # (1, N_QUANT, 7 * 7 * 64)
-        # x = x.view(x.size(0), -1).unsqueeze(1)  # (m, 1, 7 * 7 * 64)
+        x = x.view(x.size(0), -1).unsqueeze(1)  # (m, 1, 7 * 7 * 64)
         # Zτ(x,a) ≈ f(ψ(x) @ φ(τ))a  @表示按元素相乘
-        logger.log(x)
-        logger.log(rand_feat.shape)
         x = x * rand_feat                       # (m, N_QUANT, 7 * 7 * 64)
         x = F.relu(self.fc(x))                  # (m, N_QUANT, 512)
         
         # note that output of IQN is quantile values of value distribution
-        action_value = self.fc_q(x).transpose(0, 1) # (m, N_ACTIONS, N_QUANT)
+        action_value = self.fc_q(x).transpose(1, 2) # (m, N_ACTIONS, N_QUANT)
 
         return action_value, tau
 
@@ -194,8 +192,8 @@ class DQN(object):
         if np.random.uniform() >= EPSILON:
             # greedy case
             action_value, tau = self.pred_net(x) 	# (N_ENVS, N_ACTIONS, N_QUANT)
-            action_value = action_value.mean(dim=1)
-            action = torch.argmax(action_value, dim=0).data.cpu().numpy()
+            action_value = action_value.mean(dim=2)
+            action = torch.argmax(action_value, dim=1).data.cpu().numpy()
         else:
             # random exploration case
             action = np.random.randint(0, 11)
