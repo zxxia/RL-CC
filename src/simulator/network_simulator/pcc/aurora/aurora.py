@@ -370,6 +370,17 @@ class Aurora():
                 
                 s = s_
 
+            if step % 10 == 0:
+                # check time interval
+                time_interval = round(time.time() - start_time, 2)
+
+                # logger.log log
+                logger.log('Used Step: ',dqn.memory_counter,
+                    '| EPS: ', round(EPSILON, 3),
+                    '| Loss: ', loss,
+                    '| Used Time:',time_interval)
+
+
             # logger.log log and save
             if step % SAVE_FREQ == 0:
                 validation_reward = Validation(validation_traces, dqn)
@@ -378,13 +389,7 @@ class Aurora():
                     test_reward = validation_reward
                     dqn.save_model()
 
-                # check time interval
-                time_interval = round(time.time() - start_time, 2)
                 # logger.log log
-                logger.log('Used Step: ',dqn.memory_counter,
-                    '| EPS: ', round(EPSILON, 3),
-                    '| Loss: ', loss,
-                    '| Mean ep 100 return: ', validation_reward,
-                    '| Used Time:',time_interval)
+                logger.log('Mean ep 100 return: ', validation_reward)
 
         logger.log("The training is done!")
