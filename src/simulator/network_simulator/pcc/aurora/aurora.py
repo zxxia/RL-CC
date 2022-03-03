@@ -363,10 +363,10 @@ class Aurora():
                     '| Mean ep 100 return: ', mean_100_ep_return,
                     '| Used Time:',time_interval)
                 # save model
-                dqn.save_model()
-                pkl_file = open(RESULT_PATH, 'wb')
-                pickle.dump(np.array(result), pkl_file)
-                pkl_file.close()
+                #dqn.save_model()
+                #pkl_file = open(RESULT_PATH, 'wb')
+                #pickle.dump(np.array(result), pkl_file)
+                #pkl_file.close()
 
             s = s_
 
