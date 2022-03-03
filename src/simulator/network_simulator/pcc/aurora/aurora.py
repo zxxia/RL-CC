@@ -134,17 +134,17 @@ class ConvNet(nn.Module):
 
         # phi_j(tau) = RELU(sum(cos(π*i*τ)*w_ij + b_j))
         cos_trans = torch.cos(quants * tau * 3.141592).unsqueeze(2) # (N_QUANT, N_QUANT, 1)
-        rand_feat = F.relu(self.phi(cos_trans).mean(dim=1) + self.phi_bias.unsqueeze(0))
+        rand_feat = F.relu(self.phi(cos_trans).mean(dim=1) + self.phi_bias.unsqueeze(0)).unsqueeze(0) 
         # (1, N_QUANT, 7 * 7 * 64)
         logger.log(rand_feat.shape)
-        x = x.view(x.size(0), -1)  # (m, 1, 7 * 7 * 64)
+        x = x.view(x.size(0), -1).unsqueeze(1)  # (m, 1, 7 * 7 * 64)
         logger.log(x)
         # Zτ(x,a) ≈ f(ψ(x) @ φ(τ))a  @表示按元素相乘
         x = x * rand_feat                       # (m, N_QUANT, 7 * 7 * 64)
         logger.log(x.shape)
         x = F.relu(self.fc(x))                  # (m, N_QUANT, 512)
         logger.log(x.shape)
-        
+
         # note that output of IQN is quantile values of value distribution
         action_value = self.fc_q(x).transpose(1, 2) # (m, N_ACTIONS, N_QUANT)
 
@@ -191,6 +191,7 @@ class DQN(object):
     def choose_action(self, x, EPSILON):
     	# x:state
         x = torch.FloatTensor(x)
+        x = torch.reshape(x, (1, 30))
 
         # epsilon-greedy
         if np.random.uniform() >= EPSILON:
