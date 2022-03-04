@@ -1,4 +1,3 @@
-from asyncio.log import logger
 import csv
 import logging
 import multiprocessing as mp
@@ -17,7 +16,7 @@ import tensorflow as tf
 import tqdm
 tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 
-from stable_baselines import PPO1
+from stable_baselines import PPO1, logger
 from stable_baselines.common.callbacks import BaseCallback
 from stable_baselines.common.policies import FeedForwardPolicy
 
