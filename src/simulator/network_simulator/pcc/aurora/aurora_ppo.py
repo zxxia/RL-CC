@@ -1,3 +1,4 @@
+from asyncio.log import logger
 import csv
 import logging
 import multiprocessing as mp
@@ -198,15 +199,23 @@ def Validation(traces, ppo):
 
         done = False
         obs = env.reset()
+
+        temp_totalR = 0
+        temp_numberR = 0
         
         while not done:
             action, _states = ppo.predict(obs, deterministic=True)
             obs, r, done, infos = env.step(action)
 
-            totalR += r
-            numberR += 1
+            temp_totalR += r
+            temp_numberR += 1
         
-    return totalR / numberR
+        logger.log(temp_totalR / temp_numberR)
+
+        totalR += temp_totalR
+        numberR += temp_numberR
+    
+    logger.log("Average: ", totalR / numberR)
 
 class Aurora_PPO():
     cc_name = 'aurora_ppo'
