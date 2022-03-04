@@ -1,0 +1,2 @@
+model_checkpoint_path: "/datamirror/zxxia/PCC-RL/results_1006/above_0.5/udr3/seed_10/model_step_712800.ckpt"
+all_model_checkpoint_paths: "/datamirror/zxxia/PCC-RL/results_1006/above_0.5/udr3/seed_10/model_step_712800.ckpt"

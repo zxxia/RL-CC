@@ -373,13 +373,13 @@ class Aurora():
                 
                 s = s_
 
-            if step % 20 == 0:
+            if step % 50 == 0:
                 # check time interval
                 time_interval = round(time.time() - start_time, 2)
 
                 # logger.log log
                 logger.log('Used Step: ',dqn.memory_counter,
-                    '| EPS: ', round(EPSILON, 3),
+                    '| Used Trace: ', step,
                     '| Used Time:',time_interval)
 
 

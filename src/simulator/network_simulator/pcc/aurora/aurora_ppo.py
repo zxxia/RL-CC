@@ -188,9 +188,28 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
                 self.prev_t = cur_t
         return True
 
+def Validation(traces, ppo):
+    totalR = 0
+    numberR = 0
 
-class Aurora():
-    cc_name = 'aurora'
+    for trace in traces:
+        test_scheduler = TestScheduler(trace)
+        env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
+
+        done = False
+        obs = env.reset()
+        
+        while not done:
+            action, _states = ppo.predict(obs, deterministic=True)
+            obs, r, done, infos = env.step(action)
+
+            totalR += r
+            numberR += 1
+        
+    return totalR / numberR
+
+class Aurora_PPO():
+    cc_name = 'aurora_ppo'
     def __init__(self, seed: int, log_dir: str, timesteps_per_actorbatch: int,
                  pretrained_model_path: str = "", gamma: float = 0.99,
                  tensorboard_log=None, record_pkt_log: bool = False):
@@ -409,7 +428,7 @@ class Aurora():
 
 def test_on_trace(model_path: str, trace: Trace, save_dir: str, seed: int,
                   record_pkt_log: bool = False, plot_flag: bool = False):
-    rl = Aurora(seed=seed, log_dir="", pretrained_model_path=model_path,
+    rl = Aurora_PPO(seed=seed, log_dir="", pretrained_model_path=model_path,
                 timesteps_per_actorbatch=10, record_pkt_log=record_pkt_log)
     return rl.test(trace, save_dir, plot_flag)
 
