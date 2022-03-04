@@ -210,7 +210,7 @@ def Validation(traces, ppo):
             temp_totalR += r
             temp_numberR += 1
         
-        logger.log(temp_totalR / temp_numberR)
+        logger.log("Temp result", temp_totalR / temp_numberR)
 
         totalR += temp_totalR
         numberR += temp_numberR
