@@ -96,7 +96,7 @@ PRED_PATH = './model/iqn_pred_net.pkl'
 TARGET_PATH = './model/iqn_target_net.pkl'
 
 
-ACTION_MAP = [-1, -0.8, -0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6, 0.8, 1]
+ACTION_MAP = [-1, -0.5, -0.25, -0.125, -0.0625, 0, 0.0625, 0.125, 0.25, 0.5, 1]
 
 # # define huber function
 # def huber(x):
@@ -316,7 +316,7 @@ class Aurora():
         env.seed(self.seed)
 
         dqn = DQN()
-        test_reward = 0
+        test_reward = -100
 
         validation_traces = []
         for i in range(20):
