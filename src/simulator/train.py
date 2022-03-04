@@ -180,7 +180,7 @@ def main():
         tensorboard_log=args.tensorboard_log,
     )
 
-    Validation(validation_traces, aurora_ppo)
+    Validation(validation_traces, aurora_ppo.model)
 
     aurora.train(
         config_file,
