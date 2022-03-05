@@ -169,6 +169,7 @@ class IQN_Agent():
                 action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
             self.qnetwork_local.train()
             action = np.argmax(action_values.cpu().data.numpy(), axis=1)
+            logger.log("MAX Action: ", action)
             return action
         else:
             action = random.choices(np.arange(self.action_size), k=1)
@@ -189,7 +190,7 @@ class IQN_Agent():
 
             logger.log(actions)
             actions = torch.LongTensor(actions)
-            
+
             rewards = torch.FloatTensor(rewards).unsqueeze(1) 
             dones = torch.FloatTensor(dones).unsqueeze(1)
             weights = torch.FloatTensor(weights).unsqueeze(1)
@@ -285,7 +286,7 @@ def Validation(traces, dqn):
 
         while not done:
             a = dqn.choose_action(s, 0)
-            s, r, done, infos = env.step(ACTION_MAP[int(a)])
+            s, r, done, infos = env.step(ACTION_MAP[a[0]])
 
             totalR += r
             numberR += 1
@@ -364,7 +365,7 @@ class Aurora():
 
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[a[0]])
-                dqn.step(s, a, r, s_, done)
+                dqn.step(s, a[0], r, s_, done)
 
                 # annealing the epsilon(exploration strategy)
                 if number <= int(1e+4):
