@@ -211,6 +211,8 @@ class IQN_Agent():
                                                                         (q_k_target - v_k_target)/self.entropy_tau, 1).unsqueeze(-1)
 
             assert tau_log_pik.shape == (self.BATCH_SIZE, self.action_size), "shape instead is {}".format(tau_log_pik.shape)
+            logger.log(tau_log_pik.shape)
+            logger.log(actions.shape)
             munchausen_addon = tau_log_pik.gather(1, actions) #.unsqueeze(-1).expand(self.BATCH_SIZE, self.N, 1)
             
             # calc munchausen reward:
