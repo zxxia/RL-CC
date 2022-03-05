@@ -56,7 +56,7 @@ class IQN(nn.Module):
         self.n_cos = 64
         self.layer_size = layer_size
         self.pis = torch.FloatTensor([np.pi*i for i in range(1,self.n_cos+1)]).view(1,1,self.n_cos) # Starting from 0 as in the paper 
-        layer = NoisyLinear
+        layer = nn.Linear
 
         self.head = nn.Linear(state_size, layer_size) 
         self.cos_embedding = nn.Linear(self.n_cos, layer_size)
