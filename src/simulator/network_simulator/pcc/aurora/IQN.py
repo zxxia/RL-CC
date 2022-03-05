@@ -51,7 +51,6 @@ class IQN(nn.Module):
         super(IQN, self).__init__()
         self.seed = torch.manual_seed(seed)
         self.input_shape = state_size
-        self.state_dim = len(self.input_shape)
         self.action_size = action_size
         self.N = N  
         self.n_cos = 64
