@@ -356,7 +356,7 @@ class Aurora():
             s = np.array(env.reset())
 
             while not done:
-                a = dqn.choose_action(s, EPSILON)
+                a = dqn.choose_action(s, 0)
 
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[a])
@@ -376,8 +376,7 @@ class Aurora():
                 time_interval = round(time.time() - start_time, 2)
 
                 # logger.log log
-                logger.log('EPS: ', EPSILON,
-                    '| Used Step: ', number,
+                logger.log('Used Step: ', number,
                     '| Used Trace: ', step,
                     '| Used Time:',time_interval)
 
