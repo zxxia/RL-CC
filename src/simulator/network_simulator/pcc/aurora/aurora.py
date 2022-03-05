@@ -357,6 +357,8 @@ class Aurora():
             while not done:
                 a = dqn.choose_action(s, EPSILON)
 
+                print(a)
+
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
                 dqn.step(s, a, r, s_, done)
