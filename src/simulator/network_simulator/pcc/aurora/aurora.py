@@ -27,6 +27,7 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 from stable_baselines import PPO1, logger
 from stable_baselines.common.callbacks import BaseCallback
 from stable_baselines.common.policies import FeedForwardPolicy
+from stable_baselines.common.schedules import LinearSchedule
 
 from simulator.network_simulator.pcc.aurora import aurora_environment
 from simulator.network_simulator.pcc.aurora.schedulers import Scheduler, TestScheduler
@@ -165,8 +166,11 @@ class DQN(object):
         # target network step counter
         self.learn_step_counter = 0
 
-        self.replay_buffer = ReplayBuffer(MEMORY_CAPACITY)
         self.optimizer = torch.optim.Adam(self.pred_net.parameters(), lr=LR)
+
+        #self.replay_buffer = ReplayBuffer(MEMORY_CAPACITY)
+        self.replay_buffer = PrioritizedReplayBuffer(MEMORY_CAPACITY, 0.6)
+        self.beta_schedule = LinearSchedule(2e+4, initial_p=0.4, final_p=1.0)
         
     # Update target network
     def update_target(self, target, pred, update_rate):
@@ -215,8 +219,10 @@ class DQN(object):
         if self.learn_step_counter % TARGET_REPLACE_ITER == 0:
             self.update_target(self.target_net, self.pred_net, 1e-2)
     
-        b_s, b_a, b_r, b_s_, b_d = self.replay_buffer.sample(BATCH_SIZE)
-        b_w, b_idxes = np.ones_like(b_r), None
+        #b_s, b_a, b_r, b_s_, b_d = self.replay_buffer.sample(BATCH_SIZE)     
+        #b_w, b_idxes = np.ones_like(b_r), None
+        experience = self.replay_buffer.sample(BATCH_SIZE, beta=self.beta_schedule.value(self.learn_step_counter))
+        (b_s, b_a, b_r, b_s_, b_d, b_w, b_idxes) = experience
             
         b_s = torch.FloatTensor(b_s)
         b_a = torch.LongTensor(b_a)
@@ -265,6 +271,10 @@ class DQN(object):
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        u = u.sum(dim=1).mean(dim=1,keepdim=True)
+        self.replay_buffer.update_priorities(b_idxes, abs(u.data.cpu().numpy()) + 1e-6)
+
         return loss
 
 def Validation(traces, dqn):
@@ -383,7 +393,7 @@ class Aurora():
                 logger.log('Used Step: ', dqn.memory_counter,
                     '| Used Trace: ', step,
                     '| Used Time:', time_interval,
-                    '| Loss:', loss)
+                    '| Loss:', loss.item())
 
 
             # logger.log log and save
@@ -393,6 +403,7 @@ class Aurora():
                 if validation_reward > test_reward:
                     test_reward = validation_reward
                     dqn.save_model()
+                    logger.log("Save model")
 
                 # logger.log log
                 logger.log('Mean ep 100 return: ', validation_reward)
