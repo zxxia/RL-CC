@@ -186,7 +186,7 @@ class IQN_Agent():
             states, actions, rewards, next_states, dones, idx, weights = experiences
             states = torch.FloatTensor(states)
             next_states = torch.FloatTensor(np.float32(next_states))
-            actions = torch.LongTensor(actions).unsqueeze(1)
+            actions = torch.LongTensor(actions)
             rewards = torch.FloatTensor(rewards).unsqueeze(1) 
             dones = torch.FloatTensor(dones).unsqueeze(1)
             weights = torch.FloatTensor(weights).unsqueeze(1)
