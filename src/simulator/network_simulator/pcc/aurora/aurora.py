@@ -173,7 +173,7 @@ class IQN_Agent():
             logger.log("Action: ", action)
             return action
         else:
-            action = random.choices(np.arange(self.action_size), k=1)
+            action = random.choices(np.arange(self.action_size), k=1)[0]
             return action
 
     def learn_per(self, experiences):
@@ -282,7 +282,7 @@ def Validation(traces, dqn):
 
         while not done:
             a = dqn.choose_action(s, 0)
-            s, r, done, infos = env.step(ACTION_MAP[a[0]])
+            s, r, done, infos = env.step(ACTION_MAP[a])
 
             totalR += r
             numberR += 1
@@ -360,8 +360,8 @@ class Aurora():
                 a = dqn.choose_action(s, EPSILON)
 
                 # take action and get next state
-                s_, r, done, infos = env.step(ACTION_MAP[a[0]])
-                dqn.step(s, a[0], r, s_, done)
+                s_, r, done, infos = env.step(ACTION_MAP[a])
+                dqn.step(s, a, r, s_, done)
 
                 # annealing the epsilon(exploration strategy)
                 if number <= int(1e+4):
