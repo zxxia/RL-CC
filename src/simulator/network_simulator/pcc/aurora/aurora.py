@@ -164,8 +164,7 @@ class IQN_Agent():
         if random.random() > eps: # select greedy action if random number is higher than epsilon or noisy network is used!
             state = np.array(state)
             state = torch.from_numpy(state).float()
-            logger.log("State: ", state)
-            logger.log("Shape: ", state.shape)
+            state = torch.reshape(state, (1, 30))
             self.qnetwork_local.eval()
             with torch.no_grad():
                 action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
