@@ -321,7 +321,7 @@ class Aurora():
                         BATCH_SIZE=32, 
                         BUFFER_SIZE=int(1e5), 
                         LR=1e-4, 
-                        TAU=1e-3, 
+                        TAU=1e-2, 
                         GAMMA=0.99,  
                         N=64,
                         seed=1)
