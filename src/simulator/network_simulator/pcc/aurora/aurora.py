@@ -110,6 +110,7 @@ class ConvNet(nn.Module):
         self.phi = nn.Linear(1, 30, bias=False)
         self.phi_bias = nn.Parameter(torch.zeros(30))
         self.fc = nn.Linear(30, 64)
+        self.fc_m = nn.Linear(64, 64)
         
         # action value distribution
         self.fc_q = nn.Linear(64, 11) 
@@ -138,7 +139,7 @@ class ConvNet(nn.Module):
         # Zτ(x,a) ≈ f(ψ(x) @ φ(τ))a  @表示按元素相乘
         x = x * rand_feat                       # (m, N_QUANT, 30)
         #logger.log(x.shape)
-        x = F.relu(self.fc(x))                  # (m, N_QUANT, 64)
+        x = F.relu(self.fc_m(F.relu(self.fc(x))))           # (m, N_QUANT, 64)
         #logger.log(x.shape)
 
         # note that output of IQN is quantile values of value distribution
