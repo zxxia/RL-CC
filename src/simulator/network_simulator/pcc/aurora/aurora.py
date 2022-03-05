@@ -84,7 +84,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 32
 # learning rage
-LR = 1e-5
+LR = 2e-6
 
 
 '''Save&Load Settings'''
@@ -317,7 +317,7 @@ class Aurora():
         env.seed(self.seed)
 
         dqn = DQN()
-        test_reward = -100
+        test_reward = -120
 
         validation_traces = []
         for i in range(20):
