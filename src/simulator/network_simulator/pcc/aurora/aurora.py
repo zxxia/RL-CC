@@ -164,6 +164,8 @@ class IQN_Agent():
         if random.random() > eps: # select greedy action if random number is higher than epsilon or noisy network is used!
             state = np.array(state)
             state = torch.from_numpy(state).float()
+            logger.log("State: ", state)
+            logger.log("Shape: ", state.shape)
             self.qnetwork_local.eval()
             with torch.no_grad():
                 action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
@@ -377,7 +379,8 @@ class Aurora():
                 time_interval = round(time.time() - start_time, 2)
 
                 # logger.log log
-                logger.log('Used Step: ', number,
+                logger.log('EPS: ', EPSILON,
+                    '| Used Step: ', number,
                     '| Used Trace: ', step,
                     '| Used Time:',time_interval)
 
