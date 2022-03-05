@@ -169,10 +169,8 @@ class IQN_Agent():
             with torch.no_grad():
                 action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
             self.qnetwork_local.train()
-            logger.log("Value: ", action_values)
             action = np.argmax(action_values.cpu().data.numpy(), axis=1)
-            logger.log("Action: ", action)
-            return action
+            return action[0]
         else:
             action = random.choices(np.arange(self.action_size), k=1)[0]
             return action
