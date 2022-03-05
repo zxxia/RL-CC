@@ -168,8 +168,9 @@ class IQN_Agent():
             with torch.no_grad():
                 action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
             self.qnetwork_local.train()
+            logger.log("Value: ", action_values)
             action = np.argmax(action_values.cpu().data.numpy(), axis=1)
-            logger.log("MAX Action: ", action)
+            logger.log("Action: ", action)
             return action
         else:
             action = random.choices(np.arange(self.action_size), k=1)
@@ -212,8 +213,6 @@ class IQN_Agent():
                                                                         (q_k_target - v_k_target)/self.entropy_tau, 1).unsqueeze(-1)
 
             assert tau_log_pik.shape == (self.BATCH_SIZE, self.action_size), "shape instead is {}".format(tau_log_pik.shape)
-            logger.log(tau_log_pik.shape)
-            logger.log(actions.shape)
             munchausen_addon = tau_log_pik.gather(1, actions) #.unsqueeze(-1).expand(self.BATCH_SIZE, self.N, 1)
             
             # calc munchausen reward:
