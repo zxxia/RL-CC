@@ -366,7 +366,7 @@ class Aurora():
                 s_ = np.array(s_)
 
                 # clip rewards for numerical stability
-                clip_r = np.sign(r)
+                # clip_r = np.sign(r)
 
                 # annealing the epsilon(exploration strategy)
                 if number <= int(1e+4):
@@ -377,7 +377,7 @@ class Aurora():
                 number += 1
 
                 # store the transition
-                dqn.store_transition(s, a, clip_r, s_, done)
+                dqn.store_transition(s, a, r, s_, done)
 
                 # if memory fill 50K and mod 4 = 0(for speed issue), learn pred net
                 if (LEARN_START <= dqn.memory_counter) and (dqn.memory_counter % LEARN_FREQ == 0):
