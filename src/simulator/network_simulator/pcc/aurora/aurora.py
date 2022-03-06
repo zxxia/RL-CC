@@ -260,10 +260,10 @@ class DQN(object):
 
         # quantile Huber loss
         u = q_target.detach() - q_eval 		# (m, N_QUANT, N_QUANT)
-        tau = q_eval_tau.unsqueeze(0) 		# (1, N_QUANT, 1)
+        #tau = q_eval_tau.unsqueeze(0) 		# (1, N_QUANT, 1)
         # note that tau is for present quantile
         # w = |tau - delta(u<0)|
-        weight = torch.abs(tau - u.le(0.).float()) # (m, N_QUANT, N_QUANT)
+        weight = torch.abs(q_eval_tau - u.le(0.).float()) # (m, N_QUANT, N_QUANT)
         loss = F.smooth_l1_loss(q_eval, q_target.detach(), reduction='none')
         # (m, N_QUANT, N_QUANT)
         loss = torch.mean(weight * loss, dim=1).mean(dim=1)
