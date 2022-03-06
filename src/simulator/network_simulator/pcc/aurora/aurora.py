@@ -93,8 +93,8 @@ LR = 1e-5
 SAVE = True
 LOAD = False
 # paths for predction net, target net, result log
-PRED_PATH = './model/iqn_pred_net.pkl'
-TARGET_PATH = './model/iqn_target_net.pkl'
+PRED_PATH = './model/iqn_pred_net_min.pkl'
+TARGET_PATH = './model/iqn_target_net_min.pkl'
 
 
 ACTION_MAP = [-1, -0.7, -0.45, -0.25, -0.1, 0, 0.1, 0.25, 0.45, 0.7, 1]
@@ -277,13 +277,13 @@ class DQN(object):
             #logger.log(x)
             action_value, tau = self.pred_net(x) 	# (N_ENVS, N_ACTIONS, N_QUANT)
 
-            logger.log("Value: ", action_value)
+            #logger.log("Value: ", action_value)
             # logger.log("Tau: ", tau)
 
             #action_value = action_value.mean(dim=2)
             action_value, _ = torch.min(action_value, dim=2)
 
-            logger.log(action_value)
+            #logger.log(action_value)
 
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
             #logger.log(action)
