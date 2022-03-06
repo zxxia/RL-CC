@@ -272,7 +272,10 @@ class DQN(object):
             # greedy case
             #logger.log(x)
             action_value, tau = self.pred_net(x) 	# (N_ENVS, N_ACTIONS, N_QUANT)
-            #logger.log(action_value)
+
+            logger.log("Value: ", action_value)
+            logger.log("Tau: ", tau)
+            
             action_value = action_value.mean(dim=2)
             #logger.log(action_value)
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
@@ -373,7 +376,7 @@ def Test(config_file):
     rewards = [[],[]]
     dqns = [iqn, iqn_risk]
 
-    for i in range(2):
+    for i in range(1):
         for trace in traces:
             test_scheduler = TestScheduler(trace)
             env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
@@ -392,7 +395,7 @@ def Test(config_file):
     for ratio in [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]:
         logger.log("Ratio: ", ratio)
         logger.log("IQN: ", rewards[0][int(ratio * len(rewards[0]))])
-        logger.log("Risk: ", rewards[1][int(ratio * len(rewards[1]))])
+        # logger.log("Risk: ", rewards[1][int(ratio * len(rewards[1]))])
 
 
 def Validation(traces, dqn: DQN):

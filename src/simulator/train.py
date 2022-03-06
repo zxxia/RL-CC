@@ -197,6 +197,4 @@ def main():
 
 
 if __name__ == "__main__":
-    t_start = time.time()
     main()
-    print("time used: {:.2f}s".format(time.time() - t_start))
