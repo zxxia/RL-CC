@@ -452,7 +452,7 @@ class Aurora():
 
                 # if memory fill 50K and mod 4 = 0(for speed issue), learn pred net
                 if (LEARN_START <= dqn.memory_counter) and (dqn.memory_counter % LEARN_FREQ == 0):
-                    loss.append(dqn.learn())
+                    loss.append(dqn.learn().item())
                 
                 s = s_
 
