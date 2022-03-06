@@ -168,7 +168,7 @@ def main():
     else:
         raise NotImplementedError
 
-    '''
+    
     validation_traces = []
     for i in range(20):
         validation_traces.append(Trace.load_from_file("./validation/" + str(i)))
@@ -182,7 +182,7 @@ def main():
     )
 
     Validation(validation_traces, aurora_ppo.model)
-    '''
+    
 
     aurora.train(
         config_file,

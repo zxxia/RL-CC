@@ -333,7 +333,7 @@ class Aurora():
         env.seed(self.seed)
 
         dqn = DQN()
-        test_reward = -120
+        test_reward = -250
 
         validation_traces = []
         for i in range(20):
@@ -358,7 +358,7 @@ class Aurora():
         # Total simulation step
         STEP_NUM = int(1e+5)
         # save frequency
-        SAVE_FREQ = int(2e+2)
+        SAVE_FREQ = int(2e+1)
 
         for step in range(1, STEP_NUM+1):
             done = False
@@ -391,19 +391,16 @@ class Aurora():
                 
                 s = s_
 
-            if step % 50 == 0:
-                # check time interval
+            # logger.log log and save
+            if step % SAVE_FREQ == 0:
                 time_interval = round(time.time() - start_time, 2)
 
                 # logger.log log
                 logger.log('Used Step: ', dqn.memory_counter,
                     '| Used Trace: ', step,
                     '| Used Time:', time_interval,
-                    '| Loss:', loss.item())
+                    '| Loss:', round(loss.item(), 3))
 
-
-            # logger.log log and save
-            if step % SAVE_FREQ == 0:
                 validation_reward = Validation(validation_traces, dqn)
 
                 if validation_reward > test_reward:
