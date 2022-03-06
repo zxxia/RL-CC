@@ -223,7 +223,7 @@ class DQN(object):
         self.learn_step_counter += 1
         # target parameter update
         if self.learn_step_counter % TARGET_REPLACE_ITER == 0:
-            self.update_target(self.target_net, self.pred_net, 1e-1)
+            self.update_target(self.target_net, self.pred_net, 1e-2)
     
         b_s, b_a, b_r, b_s_, b_d = self.replay_buffer.sample(BATCH_SIZE)     
         b_w, b_idxes = np.ones_like(b_r), None
