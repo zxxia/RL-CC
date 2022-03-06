@@ -99,29 +99,66 @@ TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
 ACTION_MAP = [-1, -0.7, -0.45, -0.25, -0.1, 0, 0.1, 0.25, 0.45, 0.7, 1]
 
-# # define huber function
-# def huber(x):
-# 	cond = (c.abs()<1.0).float().detach()
-# 	return 0.5 * x.pow(2) * cond + (x.abs() - 0.5) * (1.0 - cond)
+class NoisyLinear(nn.Module):
+    def __init__(self, in_features, out_features, sigma=0.5):
+        super(NoisyLinear, self).__init__()
+
+        # Learnable parameters.
+        self.mu_W = nn.Parameter(
+            torch.FloatTensor(out_features, in_features))
+        self.sigma_W = nn.Parameter(
+            torch.FloatTensor(out_features, in_features))
+        self.mu_bias = nn.Parameter(torch.FloatTensor(out_features))
+        self.sigma_bias = nn.Parameter(torch.FloatTensor(out_features))
+
+        # Factorized noise parameters.
+        self.register_buffer('eps_p', torch.FloatTensor(in_features))
+        self.register_buffer('eps_q', torch.FloatTensor(out_features))
+
+        self.in_features = in_features
+        self.out_features = out_features
+        self.sigma = sigma
+
+        self.reset()
+        self.sample()
+
+    def reset(self):
+        bound = 1 / np.sqrt(self.in_features)
+        self.mu_W.data.uniform_(-bound, bound)
+        self.mu_bias.data.uniform_(-bound, bound)
+        self.sigma_W.data.fill_(self.sigma / np.sqrt(self.in_features))
+        self.sigma_bias.data.fill_(self.sigma / np.sqrt(self.out_features))
+
+    def f(self, x):
+        return x.normal_().sign().mul(x.abs().sqrt())
+
+    def sample(self):
+        self.eps_p.copy_(self.f(self.eps_p))
+        self.eps_q.copy_(self.f(self.eps_q))
+
+    def forward(self, x):
+        if self.training:
+            weight = self.mu_W + self.sigma_W * self.eps_q.ger(self.eps_p)
+            bias = self.mu_bias + self.sigma_bias * self.eps_q.clone()
+        else:
+            weight = self.mu_W
+            bias = self.mu_bias
+
+        return F.linear(x, weight, bias)
 
 class ConvNet(nn.Module):
     def __init__(self):
         super(ConvNet, self).__init__()
 
-        self.phi = nn.Linear(N_QUANT, 30)
-        self.fc = nn.Linear(30, 64)
-        self.fc_m = nn.Linear(64, 64)
+        # Noisy
+        linear = NoisyLinear
+
+        self.phi = linear(N_QUANT, 30)
+        self.fc = linear(30, 64)
+        self.fc_m = linear(64, 64)
         
         # action value distribution
-        self.fc_q = nn.Linear(64, 11) 
-        
-        # Initialization 
-        for m in self.modules():
-            if isinstance(m, nn.Linear):
-                nn.init.kaiming_normal_(m.weight)
-                if m.bias is not None:
-                    nn.init.constant_(m.bias, 0.0)
-                
+        self.fc_q = linear(64, 11) 
             
     def forward(self, x):
         batch_size = x.shape[0]
@@ -154,6 +191,20 @@ class ConvNet(nn.Module):
 
         return action_value, taus
 
+    def set_train(self):
+        for m in self.modules():
+            if isinstance(m, NoisyLinear):
+                m.training = True
+    
+    def set_test(self):
+        for m in self.modules():
+            if isinstance(m, NoisyLinear):
+                m.training = False
+
+    def sample_noise(self):
+        for m in self.modules():
+            if isinstance(m, NoisyLinear):
+                m.sample()
 
     def save(self, PATH):
         torch.save(self.state_dict(),PATH)
@@ -186,6 +237,14 @@ class DQN(object):
             target_param.data.copy_((1.0 - update_rate) \
                                     * target_param.data + update_rate*pred_param.data)
     
+    def set_train(self):
+        self.pred_net.set_train()
+        self.target_net.set_train()
+    
+    def set_test(self):
+        self.pred_net.set_test()
+        self.target_net.set_test()
+
     def save_model(self):
         # save prediction network and target network
         self.pred_net.save(PRED_PATH)
@@ -222,10 +281,15 @@ class DQN(object):
 
     def learn(self):
         self.learn_step_counter += 1
+
         # target parameter update
         if self.learn_step_counter % TARGET_REPLACE_ITER == 0:
             self.update_target(self.target_net, self.pred_net, 1e-2)
     
+        # Noisy
+        self.pred_net.sample_noise()
+        self.target_net.sample_noise()
+
         # b_s, b_a, b_r, b_s_, b_d = self.replay_buffer.sample(BATCH_SIZE)     
         # b_w, b_idxes = np.ones_like(b_r), None
         # replay
@@ -287,9 +351,9 @@ class DQN(object):
 
         return loss
 
-def Validation(traces, dqn):
-    totalR = 0
-    numberR = 0
+def Validation(traces, dqn: DQN):
+    dqn.set_test()
+    rewards = []
 
     for trace in traces:
         test_scheduler = TestScheduler(trace)
@@ -302,10 +366,9 @@ def Validation(traces, dqn):
             a = dqn.choose_action(s, 0)
             s, r, done, infos = env.step(ACTION_MAP[int(a)])
 
-            totalR += r
-            numberR += 1
+            rewards.append(r)
         
-    return totalR / numberR
+    return sum(rewards) / len(rewards)
 
 
 class Aurora():
@@ -332,6 +395,8 @@ class Aurora():
         env.seed(self.seed)
 
         dqn = DQN()
+        dqn.set_train()
+
         test_reward = -250
 
         validation_traces = []
@@ -351,7 +416,7 @@ class Aurora():
         # check learning time
         start_time = time.time()
         number = 0
-        loss = 0
+        loss = []
 
         EPSILON = 1.0
         # Total simulation step
@@ -364,7 +429,8 @@ class Aurora():
             s = np.array(env.reset())
 
             while not done:
-                a = dqn.choose_action(s, EPSILON)
+                # Noisy
+                a = dqn.choose_action(s, 0)
 
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
@@ -386,7 +452,7 @@ class Aurora():
 
                 # if memory fill 50K and mod 4 = 0(for speed issue), learn pred net
                 if (LEARN_START <= dqn.memory_counter) and (dqn.memory_counter % LEARN_FREQ == 0):
-                    loss = dqn.learn()
+                    loss.append(dqn.learn())
                 
                 s = s_
 
@@ -398,8 +464,9 @@ class Aurora():
                 logger.log('Used Step: ', dqn.memory_counter,
                     '| Used Trace: ', step,
                     '| Used Time:', time_interval,
-                    '| Loss:', round(loss.item(), 3))
+                    '| Loss:', round(sum(loss) / len(loss), 3))
 
+                loss = []
                 validation_reward = Validation(validation_traces, dqn)
 
                 if validation_reward > test_reward:
@@ -409,5 +476,6 @@ class Aurora():
 
                 # logger.log log
                 logger.log('Mean ep 100 return: ', validation_reward)
+                dqn.set_train()
 
         logger.log("The training is done!")
