@@ -281,7 +281,7 @@ class DQN(object):
             logger.log("Tau: ", tau)
 
             #action_value = action_value.mean(dim=2)
-            action_value = torch.min(action_value, dim=2)
+            action_value, _ = torch.min(action_value, dim=2)
             #logger.log(action_value)
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
             #logger.log(action)
