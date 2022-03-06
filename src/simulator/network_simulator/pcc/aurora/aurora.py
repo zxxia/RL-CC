@@ -108,8 +108,7 @@ class ConvNet(nn.Module):
     def __init__(self):
         super(ConvNet, self).__init__()
 
-        self.phi = nn.Linear(1, 30, bias=False)
-        self.phi_bias = nn.Parameter(torch.zeros(30))
+        self.phi = nn.Linear(N_QUANT, 30)
         self.fc = nn.Linear(30, 64)
         self.fc_m = nn.Linear(64, 64)
         
@@ -125,15 +124,21 @@ class ConvNet(nn.Module):
                 
             
     def forward(self, x):
-        # Rand Initlialization
-        tau = torch.rand(N_QUANT, 1) # (N_QUANT, 1)
-        # Quants=[1,2,3,...,N_QUANT]
-        quants = torch.arange(0, N_QUANT, 1.0) # (N_QUANT,1)
+        batch_size = x.shape[0]
 
+        # Rand Initlialization
+        taus = torch.rand(batch_size, N_QUANT)
+        i_pi = np.pi * torch.arange(start=1, end=N_QUANT+1).view(1, 1, N_QUANT)
+
+        # Calculate cos(i * \pi * \tau).
+        cosines = torch.cos(
+            taus.view(batch_size, N_QUANT, 1) * i_pi
+            ).view(batch_size *  N_QUANT, N_QUANT)
+
+        # Calculate embeddings of taus.
         # phi_j(tau) = RELU(sum(cos(π*i*τ)*w_ij + b_j))
-        cos_trans = torch.cos(quants * tau * 3.141592).unsqueeze(2) # (N_QUANT, N_QUANT, 1)
-        rand_feat = F.relu(self.phi(cos_trans).mean(dim=1) + self.phi_bias.unsqueeze(0)).unsqueeze(0) 
-        # (1, N_QUANT, 30)
+        rand_feat = F.relu(self.phi(cosines).view(batch_size, N_QUANT, 30))
+
         #logger.log(rand_feat.shape)
         x = x.view(x.size(0), -1).unsqueeze(1)  # (m, 1, 30)
         #logger.log(x)
@@ -146,7 +151,7 @@ class ConvNet(nn.Module):
         # note that output of IQN is quantile values of value distribution
         action_value = self.fc_q(x).transpose(1, 2) # (m, N_ACTIONS, N_QUANT)
 
-        return action_value, tau
+        return action_value, taus
 
 
     def save(self, PATH):
