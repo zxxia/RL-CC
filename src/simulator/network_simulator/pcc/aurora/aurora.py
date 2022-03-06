@@ -264,10 +264,7 @@ class DQN(object):
         # note that tau is for present quantile
         # w = |tau - delta(u<0)|
 
-        logger.log(q_eval_tau.shape)
-        logger.log(u.shape)
-
-        weight = torch.abs(q_eval_tau - u.le(0.).float()) # (m, N_QUANT, N_QUANT)
+        weight = torch.abs(q_eval_tau[..., None] - u.le(0.).float()) # (m, N_QUANT, N_QUANT)
         loss = F.smooth_l1_loss(q_eval, q_target.detach(), reduction='none')
         # (m, N_QUANT, N_QUANT)
         loss = torch.mean(weight * loss, dim=1).mean(dim=1)
