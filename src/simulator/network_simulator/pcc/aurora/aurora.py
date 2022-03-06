@@ -93,8 +93,8 @@ LR = 1e-5
 SAVE = True
 LOAD = False
 # paths for predction net, target net, result log
-PRED_PATH = './model/iqn_pred_net.pkl'
-TARGET_PATH = './model/iqn_target_net.pkl'
+PRED_PATH = './model/iqn_pred_net_risk.pkl'
+TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
 
 ACTION_MAP = [-1, -0.7, -0.45, -0.25, -0.1, 0, 0.1, 0.25, 0.45, 0.7, 1]
@@ -128,6 +128,7 @@ class ConvNet(nn.Module):
 
         # Rand Initlialization
         taus = torch.rand(batch_size, N_QUANT)
+        taus = taus * 0.2
         i_pi = np.pi * torch.arange(start=1, end=N_QUANT+1).view(1, 1, N_QUANT)
 
         # Calculate cos(i * \pi * \tau).
@@ -315,11 +316,6 @@ class Aurora():
         self.log_dir = log_dir
         self.pretrained_model_path = pretrained_model_path
         self.steps_trained = 0
-        dummy_trace = generate_trace(
-            (10, 10), (2, 2), (2, 2), (50, 50), (0, 0), (1, 1), (0, 0), (0, 0))
-        # env = gym.make('AuroraEnv-v0', traces=[dummy_trace], train_flag=True)
-        test_scheduler = TestScheduler(dummy_trace)
-        env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
         self.model = DQN()
 
     def train(self, config_file: str, total_timesteps: int,
