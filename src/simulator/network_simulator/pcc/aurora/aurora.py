@@ -147,7 +147,7 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
 
 class ConvNet(nn.Module):
-    def __init__(self):
+    def __init__(self, alpha = 1.0):
         super(ConvNet, self).__init__()
 
         # Noisy
@@ -158,7 +158,8 @@ class ConvNet(nn.Module):
         self.fc_m = linear(64, 64)
         
         # action value distribution
-        self.fc_q = linear(64, 11) 
+        self.fc_q = linear(64, 11)
+        self.alpha = alpha
             
     def forward(self, x):
         batch_size = x.shape[0]
@@ -167,7 +168,7 @@ class ConvNet(nn.Module):
         taus = torch.rand(batch_size, N_QUANT)
 
         # Risk
-        taus = taus * 0.2
+        taus = taus * self.alpha
         
         i_pi = np.pi * torch.arange(start=1, end=N_QUANT+1).view(1, 1, N_QUANT)
 
@@ -262,6 +263,9 @@ class DQN(object):
         self.pred_net.load('./model/iqn_pred_net_risk.pkl')
         self.target_net.load('./model/iqn_target_net_risk.pkl')
 
+        self.pred_net.alpha = 0.2
+        self.target_net.alpha = 0.2
+
     def choose_action(self, x, EPSILON):
     	# x:state
         x = torch.FloatTensor(x)
@@ -273,9 +277,9 @@ class DQN(object):
             #logger.log(x)
             action_value, tau = self.pred_net(x) 	# (N_ENVS, N_ACTIONS, N_QUANT)
 
-            logger.log("Value: ", action_value)
-            logger.log("Tau: ", tau)
-            
+            # logger.log("Value: ", action_value)
+            # logger.log("Tau: ", tau)
+
             action_value = action_value.mean(dim=2)
             #logger.log(action_value)
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
@@ -376,7 +380,7 @@ def Test(config_file):
     rewards = [[],[]]
     dqns = [iqn, iqn_risk]
 
-    for i in range(1):
+    for i in range(2):
         for trace in traces:
             test_scheduler = TestScheduler(trace)
             env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
@@ -395,7 +399,7 @@ def Test(config_file):
     for ratio in [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]:
         logger.log("Ratio: ", ratio)
         logger.log("IQN: ", rewards[0][int(ratio * len(rewards[0]))])
-        # logger.log("Risk: ", rewards[1][int(ratio * len(rewards[1]))])
+        logger.log("Risk: ", rewards[1][int(ratio * len(rewards[1]))])
 
 
 def Validation(traces, dqn: DQN):
