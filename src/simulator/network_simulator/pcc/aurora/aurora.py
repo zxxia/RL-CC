@@ -93,8 +93,8 @@ LR = 1e-5
 SAVE = True
 LOAD = False
 # paths for predction net, target net, result log
-PRED_PATH = './model/iqn_pred_net_risk.pkl'
-TARGET_PATH = './model/iqn_target_net_risk.pkl'
+PRED_PATH = './model/iqn_pred_net.pkl'
+TARGET_PATH = './model/iqn_target_net.pkl'
 
 
 ACTION_MAP = [-1, -0.7, -0.45, -0.25, -0.1, 0, 0.1, 0.25, 0.45, 0.7, 1]
@@ -255,8 +255,12 @@ class DQN(object):
 
     def load_model(self):
         # load prediction network and target network
-        self.pred_net.load(PRED_PATH)
-        self.target_net.load(TARGET_PATH)
+        self.pred_net.load('./model/iqn_pred_net.pkl')
+        self.target_net.load('./model/iqn_target_net.pkl')
+    
+    def load_model_risk(self):
+        self.pred_net.load('./model/iqn_pred_net_risk.pkl')
+        self.target_net.load('./model/iqn_target_net_risk.pkl')
 
     def choose_action(self, x, EPSILON):
     	# x:state
@@ -353,6 +357,43 @@ class DQN(object):
         self.replay_buffer.update_priorities(b_idxes, abs(u.data.cpu().numpy()) + 1e-6)
 
         return loss
+
+def Test(config_file):
+    traces = generate_traces(config_file, 20, duration=30)
+    traces = generate_traces(config_file, 100, duration=30)
+
+    iqn = DQN()
+    iqn.load_model()
+    iqn.set_test()
+
+    iqn_risk = DQN()
+    iqn_risk.load_model_risk()
+    iqn_risk.set_test()
+   
+    rewards = [[],[]]
+    dqns = [iqn, iqn_risk]
+
+    for i in range(2):
+        for trace in traces:
+            test_scheduler = TestScheduler(trace)
+            env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
+
+            done = False
+            s = np.array(env.reset())
+
+            while not done:
+                a = dqns[i].choose_action(s, 0)
+                s, r, done, infos = env.step(ACTION_MAP[int(a)])
+
+                rewards[i].append(r)
+
+        rewards[i].sort()
+        
+    for ratio in [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.99]:
+        logger.log("Ratio: ", ratio)
+        logger.log("IQN: ", rewards[0][int(ratio * len(rewards[0]))])
+        logger.log("Risk: ", rewards[1][int(ratio * len(rewards[1]))])
+
 
 def Validation(traces, dqn: DQN):
     dqn.set_test()
