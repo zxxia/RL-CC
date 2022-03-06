@@ -173,9 +173,9 @@ class DQN(object):
 
         self.optimizer = torch.optim.Adam(self.pred_net.parameters(), lr=LR)
 
-        #self.replay_buffer = ReplayBuffer(MEMORY_CAPACITY)
-        self.replay_buffer = PrioritizedReplayBuffer(MEMORY_CAPACITY, 0.6)
-        self.beta_schedule = LinearSchedule(2e+4, initial_p=0.4, final_p=1.0)
+        self.replay_buffer = ReplayBuffer(MEMORY_CAPACITY)
+        #self.replay_buffer = PrioritizedReplayBuffer(MEMORY_CAPACITY, 0.6)
+        #self.beta_schedule = LinearSchedule(2e+4, initial_p=0.4, final_p=1.0)
         
     # Update target network
     def update_target(self, target, pred, update_rate):
@@ -224,10 +224,10 @@ class DQN(object):
         if self.learn_step_counter % TARGET_REPLACE_ITER == 0:
             self.update_target(self.target_net, self.pred_net, 1e-1)
     
-        #b_s, b_a, b_r, b_s_, b_d = self.replay_buffer.sample(BATCH_SIZE)     
-        #b_w, b_idxes = np.ones_like(b_r), None
-        experience = self.replay_buffer.sample(BATCH_SIZE, beta=self.beta_schedule.value(self.learn_step_counter))
-        (b_s, b_a, b_r, b_s_, b_d, b_w, b_idxes) = experience
+        b_s, b_a, b_r, b_s_, b_d = self.replay_buffer.sample(BATCH_SIZE)     
+        b_w, b_idxes = np.ones_like(b_r), None
+        #experience = self.replay_buffer.sample(BATCH_SIZE, beta=self.beta_schedule.value(self.learn_step_counter))
+        #(b_s, b_a, b_r, b_s_, b_d, b_w, b_idxes) = experience
             
         b_s = torch.FloatTensor(b_s)
         b_a = torch.LongTensor(b_a)
@@ -278,8 +278,8 @@ class DQN(object):
         loss.backward()
         self.optimizer.step()
 
-        u = u.sum(dim=1).mean(dim=1,keepdim=True)
-        self.replay_buffer.update_priorities(b_idxes, abs(u.data.cpu().numpy()) + 1e-6)
+        #u = u.sum(dim=1).mean(dim=1,keepdim=True)
+        #self.replay_buffer.update_priorities(b_idxes, abs(u.data.cpu().numpy()) + 1e-6)
 
         return loss
 
