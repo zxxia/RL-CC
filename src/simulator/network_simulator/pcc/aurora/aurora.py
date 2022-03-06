@@ -277,11 +277,11 @@ class DQN(object):
             #logger.log(x)
             action_value, tau = self.pred_net(x) 	# (N_ENVS, N_ACTIONS, N_QUANT)
 
-            logger.log("Value: ", action_value)
-            logger.log("Tau: ", tau)
+            # logger.log("Value: ", action_value)
+            # logger.log("Tau: ", tau)
 
-            #action_value = action_value.mean(dim=2)
-            action_value, _ = torch.min(action_value, dim=2)
+            action_value = action_value.mean(dim=2)
+            #action_value, _ = torch.min(action_value, dim=2)
             #logger.log(action_value)
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
             #logger.log(action)
