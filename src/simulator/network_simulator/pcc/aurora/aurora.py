@@ -72,7 +72,7 @@ MEMORY_CAPACITY = int(1e+5)
 # simulator steps for learning interval
 LEARN_FREQ = 1
 # quantile numbers for IQN
-N_QUANT = 64
+N_QUANT = 8
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
