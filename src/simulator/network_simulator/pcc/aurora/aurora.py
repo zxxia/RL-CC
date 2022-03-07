@@ -283,7 +283,7 @@ class DQN(object):
             # Min
             action_value = action_value.mean(dim=2)
             #action_value, _ = torch.min(action_value, dim=2)
-            #action = torch.argmax(action_value, dim=1).data.cpu().numpy()
+            action = torch.argmax(action_value, dim=1).data.cpu().numpy()
         else:
             # random exploration case
             action = np.random.randint(0, 11)
