@@ -147,7 +147,7 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
 
 class ConvNet(nn.Module):
-    def __init__(self, alpha = 0.5):
+    def __init__(self, alpha = 1.0):
         super(ConvNet, self).__init__()
 
         # Noisy
@@ -260,11 +260,11 @@ class DQN(object):
         self.target_net.load('./model/iqn_target_net.pkl')
     
     def load_model_risk(self):
-        self.pred_net.load('./model/iqn_pred_net_min.pkl')
-        self.target_net.load('./model/iqn_target_net_min.pkl')
+        self.pred_net.load('./model/iqn_pred_net_risk.pkl')
+        self.target_net.load('./model/iqn_target_net_risk.pkl')
 
-        #self.pred_net.alpha = 0.2
-        #self.target_net.alpha = 0.2
+        self.pred_net.alpha = 0.5
+        self.target_net.alpha = 0.5
 
     def choose_action(self, x, EPSILON):
     	# x:state
@@ -298,7 +298,7 @@ class DQN(object):
 
         # target parameter update
         if self.learn_step_counter % TARGET_REPLACE_ITER == 0:
-            self.update_target(self.target_net, self.pred_net, 1e-2)
+            self.update_target(self.target_net, self.pred_net, 1e-3)
     
         # Noisy
         self.pred_net.sample_noise()
