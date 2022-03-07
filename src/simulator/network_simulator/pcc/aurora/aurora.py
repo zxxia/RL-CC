@@ -73,6 +73,7 @@ MEMORY_CAPACITY = int(1e+5)
 LEARN_FREQ = 1
 # quantile numbers for IQN
 N_QUANT = 8
+N_ACTION = 33
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
@@ -97,7 +98,17 @@ PRED_PATH = './model/iqn_pred_net_risk.pkl'
 TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
 
-ACTION_MAP = [-1, -0.7, -0.45, -0.25, -0.1, 0, 0.1, 0.25, 0.45, 0.7, 1]
+ACTION_MAP = [-1.01, -1, -0.99,
+            -0.71, -0.7, -0.69,
+            -0.46, -0.45, -0.44,
+            -0.26, -0.25, -0.24,
+            -0.11, -0.1, -0.09,
+            -0.01, 0, +0.01,
+            +0.09, +0.1, +0.11,
+            +0.24, +0.25, +0.26,
+            +0.44, +0.45, +0.46,
+            +0.69, +0.7, +0.71,
+            +0.99, +1, +1.01]
 
 class NoisyLinear(nn.Module):
     def __init__(self, in_features, out_features, sigma=0.5):
@@ -147,7 +158,7 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
 
 class ConvNet(nn.Module):
-    def __init__(self, alpha = 0.5):
+    def __init__(self, alpha = 1):
         super(ConvNet, self).__init__()
 
         # Noisy
@@ -158,7 +169,7 @@ class ConvNet(nn.Module):
         self.fc_m = linear(64, 64)
         
         # action value distribution
-        self.fc_q = linear(64, 11)
+        self.fc_q = linear(64, N_ACTION)
         self.alpha = alpha
             
     def forward(self, x):
@@ -286,7 +297,7 @@ class DQN(object):
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
         else:
             # random exploration case
-            action = np.random.randint(0, 11)
+            action = np.random.randint(0, N_ACTION)
         return int(action)
 
     def store_transition(self, s, a, r, s_, done):
