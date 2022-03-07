@@ -93,8 +93,8 @@ LR = 1e-5
 SAVE = True
 LOAD = False
 # paths for predction net, target net, result log
-PRED_PATH = './model/iqn_pred_net_min.pkl'
-TARGET_PATH = './model/iqn_target_net_min.pkl'
+PRED_PATH = './model/iqn_pred_net_risk.pkl'
+TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
 
 ACTION_MAP = [-1, -0.7, -0.45, -0.25, -0.1, 0, 0.1, 0.25, 0.45, 0.7, 1]
@@ -147,7 +147,7 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
 
 class ConvNet(nn.Module):
-    def __init__(self, alpha = 1.0):
+    def __init__(self, alpha = 0.5):
         super(ConvNet, self).__init__()
 
         # Noisy
@@ -281,9 +281,9 @@ class DQN(object):
             # logger.log("Tau: ", tau)
 
             # Min
-            # action_value = action_value.mean(dim=2)
-            action_value, _ = torch.min(action_value, dim=2)
-            action = torch.argmax(action_value, dim=1).data.cpu().numpy()
+            action_value = action_value.mean(dim=2)
+            #action_value, _ = torch.min(action_value, dim=2)
+            #action = torch.argmax(action_value, dim=1).data.cpu().numpy()
         else:
             # random exploration case
             action = np.random.randint(0, 11)
@@ -332,9 +332,9 @@ class DQN(object):
         q_next, q_next_tau = self.target_net(b_s_) 				# (m, N_ACTIONS, N_QUANT), (N_QUANT, 1)
 
         # Min
-        # best_actions = q_next.mean(dim=2).argmax(dim=1) 		# (m)
-        action_value, _ = torch.min(q_next, dim=2)
-        best_actions = action_value.argmax(dim = 1)
+        best_actions = q_next.mean(dim=2).argmax(dim=1) 		# (m)
+        #action_value, _ = torch.min(q_next, dim=2)
+        #best_actions = action_value.argmax(dim = 1)
 
         q_next = torch.stack([q_next[i].index_select(0, best_actions[i]) for i in range(mb_size)]).squeeze(1)
         # q_nest: (m, N_QUANT)
