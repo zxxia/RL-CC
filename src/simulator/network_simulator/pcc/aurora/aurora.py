@@ -280,13 +280,10 @@ class DQN(object):
             #logger.log("Value: ", action_value)
             # logger.log("Tau: ", tau)
 
-            action_value = action_value.mean(dim=2)
-            #action_value, _ = torch.min(action_value, dim=2)
-
-            #logger.log(action_value)
-
+            # Min
+            # action_value = action_value.mean(dim=2)
+            action_value, _ = torch.min(action_value, dim=2)
             action = torch.argmax(action_value, dim=1).data.cpu().numpy()
-            #logger.log(action)
         else:
             # random exploration case
             action = np.random.randint(0, 11)
@@ -333,7 +330,12 @@ class DQN(object):
         
         # get next state value
         q_next, q_next_tau = self.target_net(b_s_) 				# (m, N_ACTIONS, N_QUANT), (N_QUANT, 1)
-        best_actions = q_next.mean(dim=2).argmax(dim=1) 		# (m)
+
+        # Min
+        # best_actions = q_next.mean(dim=2).argmax(dim=1) 		# (m)
+        action_value, _ = torch.min(q_next, dim=2)
+        best_actions = action_value.argmax(dim = 1)
+
         q_next = torch.stack([q_next[i].index_select(0, best_actions[i]) for i in range(mb_size)]).squeeze(1)
         # q_nest: (m, N_QUANT)
         # q_target = R + gamma * (1 - terminate) * q_next
