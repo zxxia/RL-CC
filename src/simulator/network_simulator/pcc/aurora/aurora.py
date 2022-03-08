@@ -536,7 +536,7 @@ class Aurora():
                 loss = []
                 validation_reward = Validation(validation_traces, dqn)
 
-                if step > 300 and validation_reward > test_reward:
+                if step > 900 and validation_reward > test_reward:
                     test_reward = validation_reward
                     dqn.save_model()
                     logger.log("Save model")
