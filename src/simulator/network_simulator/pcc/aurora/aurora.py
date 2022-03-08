@@ -158,7 +158,7 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
 
 class ConvNet(nn.Module):
-    def __init__(self, alpha = 0.1):
+    def __init__(self, alpha = 0.05):
         super(ConvNet, self).__init__()
 
         # Noisy
