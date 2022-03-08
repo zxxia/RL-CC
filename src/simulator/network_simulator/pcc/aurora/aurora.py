@@ -274,9 +274,6 @@ class DQN(object):
         self.pred_net.load('./model/iqn_pred_net_risk.pkl')
         self.target_net.load('./model/iqn_target_net_risk.pkl')
 
-        self.pred_net.alpha = 0.5
-        self.target_net.alpha = 0.5
-
     def choose_action(self, x, EPSILON):
     	# x:state
         x = torch.FloatTensor(x)
