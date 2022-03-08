@@ -383,8 +383,8 @@ def Test(config_file):
     traces = generate_traces(config_file, 100, duration=30)
 
     iqn = DQN()
-    iqn.load_model()
-    iqn.set_test()
+    #iqn.load_model()
+    #iqn.set_test()
 
     iqn_risk = DQN()
     iqn_risk.load_model_risk()
