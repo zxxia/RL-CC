@@ -90,6 +90,7 @@ LR = 2e-6
 
 
 '''Save&Load Settings'''
+
 # check save/load
 SAVE = True
 LOAD = False
@@ -158,7 +159,7 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
 
 class ConvNet(nn.Module):
-    def __init__(self, alpha = 0.05):
+    def __init__(self, alpha = 1):
         super(ConvNet, self).__init__()
 
         # Noisy
@@ -382,6 +383,8 @@ def Test(config_file):
     traces = generate_traces(config_file, 20, duration=30)
     traces = generate_traces(config_file, 100, duration=30)
 
+    distri = [0 for i in range(N_ACTION)]
+
     iqn = DQN()
     #iqn.load_model()
     #iqn.set_test()
@@ -404,6 +407,7 @@ def Test(config_file):
             while not done:
                 a = dqns[i].choose_action(s, 0)
                 s, r, done, infos = env.step(ACTION_MAP[int(a)])
+                distri[a] += 1
 
                 rewards[i].append(r)
 
@@ -413,6 +417,9 @@ def Test(config_file):
         logger.log("Ratio: ", ratio)
         # logger.log("IQN: ", rewards[0][int(ratio * len(rewards[0]))])
         logger.log("IQN: ", rewards[1][int(ratio * len(rewards[1]))])
+    
+    for i in range(N_ACTION):
+        logger.log("Action ", i, " : ", distri[i])
 
 
 def Validation(traces, dqn: DQN):
