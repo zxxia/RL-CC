@@ -73,7 +73,7 @@ MEMORY_CAPACITY = int(1e+5)
 LEARN_FREQ = 1
 # quantile numbers for IQN
 N_QUANT = 8
-N_ACTION = 33
+N_ACTION = 32
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
@@ -99,20 +99,17 @@ PRED_PATH = './model/iqn_pred_net_risk.pkl'
 TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
 
-ACTION_MAP = [-1.01, -1, -0.99,
-            -0.71, -0.7, -0.69,
-            -0.46, -0.45, -0.44,
-            -0.26, -0.25, -0.24,
-            -0.11, -0.1, -0.09,
-            -0.01, 0, +0.01,
-            +0.09, +0.1, +0.11,
-            +0.24, +0.25, +0.26,
-            +0.44, +0.45, +0.46,
-            +0.69, +0.7, +0.71,
-            +0.99, +1, +1.01]
+ACTION_MAP = [-1.0, -0.9, -0.8, -0.7, -0.6,
+            -0.5, -0.45, -0.4,  -0.35, 
+            -0.3, -0.25, -0.2, -0.15,
+            -0.1, -0.05, -0.01
+            +0.01, 0.05, 0.1,
+            0.15, 0.2, 0.25, 0.3,
+            0.35, 0.4, 0.45, 0.5,
+            0.6, 0.7, 0.8, 0.9, 1.0,]
 
 class NoisyLinear(nn.Module):
-    def __init__(self, in_features, out_features, sigma=0.5):
+    def __init__(self, in_features, out_features, sigma=1):
         super(NoisyLinear, self).__init__()
 
         # Learnable parameters.
@@ -159,7 +156,7 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
 
 class ConvNet(nn.Module):
-    def __init__(self, alpha = 0.1):
+    def __init__(self, alpha = 1):
         super(ConvNet, self).__init__()
 
         # Noisy
