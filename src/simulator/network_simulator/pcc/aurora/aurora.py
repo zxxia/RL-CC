@@ -108,6 +108,16 @@ ACTION_MAP = [-1.0, -0.9, -0.8, -0.7, -0.6,
             0.35, 0.4, 0.45, 0.5,
             0.6, 0.7, 0.8, 0.9, 1.0,]
 
+'''
+def calculate_huber_loss(td_errors, k=1.0):
+    """
+    Calculate huber loss element-wisely depending on kappa k.
+    """
+    loss = torch.where(td_errors.abs() <= k, 0.5 * td_errors.pow(2), k * (td_errors.abs() - 0.5 * k))
+    #assert loss.shape == (td_errors.shape[0], 8, 8), "huber loss has wrong shape"
+    return loss
+'''
+
 class NoisyLinear(nn.Module):
     def __init__(self, in_features, out_features, sigma=1):
         super(NoisyLinear, self).__init__()
@@ -299,6 +309,78 @@ class DQN(object):
         self.memory_counter += 1
         self.replay_buffer.add(s, a, r, s_, float(done))
 
+    '''
+    def learn(self):
+        self.learn_step_counter += 1
+
+        # target parameter update
+        if self.learn_step_counter % TARGET_REPLACE_ITER == 0:
+            self.update_target(self.target_net, self.pred_net, 1e-3)
+    
+        # Noisy
+        self.pred_net.sample_noise()
+        self.target_net.sample_noise()
+
+        # b_s, b_a, b_r, b_s_, b_d = self.replay_buffer.sample(BATCH_SIZE)     
+        # b_w, b_idxes = np.ones_like(b_r), None
+        # replay
+        experience = self.replay_buffer.sample(BATCH_SIZE, beta=self.beta_schedule.value(self.learn_step_counter))
+        (states, actions, rewards, next_states, dones, idx, weights) = experience
+            
+        states = torch.FloatTensor(states)
+        next_states = torch.FloatTensor(np.float32(next_states))
+        actions = torch.LongTensor(actions).unsqueeze(1)
+        rewards = torch.FloatTensor(rewards).unsqueeze(1) 
+        dones = torch.FloatTensor(dones).unsqueeze(1)
+        weights = torch.FloatTensor(weights).unsqueeze(1)
+
+        Q_targets_next, _ = self.target_net(next_states)
+        Q_targets_next = Q_targets_next.detach() #(batch, num_tau, actions)
+        q_t_n = Q_targets_next.mean(dim=1)
+        # calculate log-pi 
+        logsum = torch.logsumexp(\
+            (Q_targets_next - Q_targets_next.max(2)[0].unsqueeze(-1))/self.entropy_tau, 2).unsqueeze(-1) #logsum trick
+        tau_log_pi_next = Q_targets_next - Q_targets_next.max(2)[0].unsqueeze(-1) - self.entropy_tau*logsum
+                
+        pi_target = F.softmax(q_t_n/self.entropy_tau, dim=1).unsqueeze(1)
+
+        Q_target = (self.GAMMA**self.n_step * (pi_target * (Q_targets_next-tau_log_pi_next)*(1 - dones.unsqueeze(-1))).sum(2)).unsqueeze(1)
+
+        q_k_target = self.qnetwork_target.get_qvalues(states).detach()
+        v_k_target = q_k_target.max(1)[0].unsqueeze(-1) # (8,8,1)
+        tau_log_pik = q_k_target - v_k_target - self.entropy_tau*torch.logsumexp(\
+                        (q_k_target - v_k_target)/self.entropy_tau, 1).unsqueeze(-1)
+
+        munchausen_addon = tau_log_pik.gather(1, actions) #.unsqueeze(-1).expand(self.BATCH_SIZE, self.N, 1)
+                
+        # calc munchausen reward:
+        munchausen_reward = (rewards + self.alpha*torch.clamp(munchausen_addon, min=self.lo, max=0)).unsqueeze(-1)
+        # Compute Q targets for current states 
+        Q_targets = munchausen_reward + Q_target
+        # Get expected Q values from local model
+        q_k, taus = self.qnetwork_local(states, self.N)
+        Q_expected = q_k.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, self.N, 1))
+
+        # Quantile Huber loss
+        td_error = Q_targets - Q_expected
+        huber_l = calculate_huber_loss(td_error, 1.0)
+        quantil_l = abs(taus -(td_error.detach() < 0).float()) * huber_l / 1.0
+                
+        loss = quantil_l.sum(dim=1).mean(dim=1, keepdim=True)* weights # , keepdim=True if per weights get multipl
+        loss = loss.mean()
+        
+        # backprop loss
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        # replay
+        td_error = td_error.sum(dim=1).mean(dim=1,keepdim=True)
+        self.replay_buffer.update_priorities(idx, abs(td_error.data.cpu().numpy()) + 1e-6)
+
+        return loss
+    '''
+
     def learn(self):
         self.learn_step_counter += 1
 
@@ -378,7 +460,7 @@ class DQN(object):
 
 def Test(config_file):
     traces = generate_traces(config_file, 20, duration=30)
-    traces = generate_traces(config_file, 100, duration=30)
+    traces = generate_traces(config_file, 1, duration=30)
 
     distri = [0 for i in range(N_ACTION)]
 
@@ -407,6 +489,25 @@ def Test(config_file):
                 distri[a] += 1
 
                 rewards[i].append(r)
+
+                sender_mi = env.senders[0].history.back() #get_run_data()
+                throughput = sender_mi.get("recv rate")  # bits/sec
+                send_rate = sender_mi.get("send rate")  # bits/sec
+                latency = sender_mi.get("avg latency")
+                loss = sender_mi.get("loss ratio")
+                send_ratio = sender_mi.get('send ratio')
+                reward = pcc_aurora_reward(
+                    throughput / BITS_PER_BYTE / BYTES_PER_PACKET, latency, loss,
+                    trace.avg_bw * 1e6 / BITS_PER_BYTE / BYTES_PER_PACKET,
+                    trace.avg_delay * 2 / 1e3)
+                
+                logger.log("Thp: ", throughput,
+                    " | Send Rate: ", send_rate,
+                    " | Send Raio: ", send_ratio,
+                    " | Latency: ", latency,
+                    " | Loss: ", loss,
+                    " | Real Reward: ", r,
+                    " | Est Reward:  ", reward)
 
         rewards[i].sort()
         
