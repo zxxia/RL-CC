@@ -492,16 +492,17 @@ def Test(config_file):
 
                 sender_mi = env.senders[0].history.back() #get_run_data()
                 throughput = sender_mi.get("recv rate")  # bits/sec
-                bin_tput = env.senders[0].bin_tput
+                avg_thp = trace.avg_bw * 1e6 / BITS_PER_BYTE / BYTES_PER_PACKET
                 send_rate = sender_mi.get("send rate")  # bits/sec
                 latency = sender_mi.get("avg latency")
                 loss = sender_mi.get("loss ratio")
                 send_ratio = sender_mi.get('send ratio')
+
                 
                 logger.log("Thp: ", throughput,
                     " | Send Rate: ", send_rate,
                     " | Action: ", ACTION_MAP[int(a)],
-                    " | Available: ", bin_tput,
+                    " | Average: ", avg_thp,
                     " | Send Raio: ", send_ratio,
                     " | Latency: ", latency,
                     " | Loss: ", loss,
