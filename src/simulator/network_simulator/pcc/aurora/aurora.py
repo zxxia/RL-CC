@@ -208,10 +208,7 @@ class DQN():
         """
 
         state = np.array(state)
-        if len(self.state_size) > 1:
-            state = torch.from_numpy(state).float()#.expand(self.K, self.state_size[0], self.state_size[1],self.state_size[2])        
-        else:
-            state = torch.from_numpy(state).float()#.expand(self.K, self.state_size[0])
+        state = torch.from_numpy(state).float()#.expand(self.K, self.state_size[0])
         self.qnetwork_local.eval()
         with torch.no_grad():
             action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
