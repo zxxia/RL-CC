@@ -175,6 +175,10 @@ class DQN():
         self.qnetwork_local.load('./model/iqn_pred_net.pkl')
         self.qnetwork_target.load('./model/iqn_target_net.pkl')
     
+    def load_model_risk(self):
+        self.qnetwork_local.load('./model/iqn_pred_net_risk.pkl')
+        self.qnetwork_target.load('./model/iqn_target_net_risk.pkl')
+    
     def store_transition(self, state, action, reward, next_state, done):
         # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
