@@ -53,10 +53,10 @@ class IQN(nn.Module):
         self.input_shape = state_size
         self.action_size = action_size
         self.N = N  
-        self.n_cos = 64
+        self.n_cos = 8
         self.layer_size = layer_size
         self.pis = torch.FloatTensor([np.pi*i for i in range(1,self.n_cos+1)]).view(1,1,self.n_cos) # Starting from 0 as in the paper 
-        layer = nn.Linear
+        layer = NoisyLinear
 
         self.head = nn.Linear(state_size, layer_size) 
         self.cos_embedding = nn.Linear(self.n_cos, layer_size)
@@ -71,7 +71,7 @@ class IQN(nn.Module):
         x = self.head(x)
         return x.flatten().shape[0]
         
-    def calc_cos(self, batch_size, n_tau=64):
+    def calc_cos(self, batch_size, n_tau=8):
         """
         Calculating the cosinus values depending on the number of tau samples
         """
@@ -81,7 +81,7 @@ class IQN(nn.Module):
         assert cos.shape == (batch_size,n_tau,self.n_cos), "cos shape is incorrect"
         return cos, taus
     
-    def forward(self, input, num_tau=64):
+    def forward(self, input, num_tau=8):
         """
         Quantile Calculation depending on the number of tau
         
