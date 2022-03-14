@@ -216,7 +216,6 @@ class DQN():
             action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
             self.qnetwork_local.train()
             action = np.argmax(action_values.cpu().data.numpy(), axis=1)
-            logger.log(action)
             return action
 
     def learn_per(self, experiences):
@@ -445,7 +444,7 @@ class Aurora():
 
             while not done:
                 # Noisy
-                a = dqn.choose_action(s, 0)
+                a = dqn.choose_action(s, 0)[0]
 
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
