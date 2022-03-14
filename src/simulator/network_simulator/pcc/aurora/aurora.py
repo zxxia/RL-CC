@@ -76,7 +76,7 @@ MEMORY_CAPACITY = int(1e+5)
 LEARN_FREQ = 1
 # quantile numbers for IQN
 N_QUANT = 8
-N_ACTION = 32
+N_ACTION = 14
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
@@ -102,14 +102,8 @@ PRED_PATH = './model/iqn_pred_net_risk.pkl'
 TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
 
-ACTION_MAP = [-1.0, -0.9, -0.8, -0.7, -0.6,
-            -0.5, -0.45, -0.4, -0.35, 
-            -0.3, -0.25, -0.2, -0.15,
-            -0.1, -0.05, -0.01,
-            0.01, 0.05, 0.1,
-            0.15, 0.2, 0.25, 0.3,
-            0.35, 0.4, 0.45, 0.5,
-            0.6, 0.7, 0.8, 0.9, 1.0,]
+ACTION_MAP = [-0.8727, -0.3685, -0.1698, -0.0816, -0.04, -0.02, 0.01,   
+            0.01, 0.02, 0.04, 0.0816, 0.1698, 0.3685, 0.8727]
 
 
 def calculate_huber_loss(td_errors, k=1.0):
@@ -146,7 +140,7 @@ class DQN():
         self.seed_t = torch.manual_seed(17)
         self.TAU = 1e-3
         self.N = 8
-        self.entropy_tau = 0.03
+        self.entropy_tau = 0.3
         self.lo = -1
         self.alpha = 0.9
         self.GAMMA = GAMMA
