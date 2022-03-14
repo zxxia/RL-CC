@@ -235,9 +235,9 @@ class DQN():
             dones = torch.FloatTensor(dones).unsqueeze(1)
             weights = torch.FloatTensor(weights).unsqueeze(1)
 
-            logger.log(states.shape)
-            logger.log(next_states.shape)
-            logger.log(actions.shape)
+            # logger.log(states.shape)
+            # logger.log(next_states.shape)
+            # logger.log(actions.shape)
 
             Q_targets_next, _ = self.qnetwork_target(next_states, self.N)
             Q_targets_next = Q_targets_next.detach() #(batch, num_tau, actions)

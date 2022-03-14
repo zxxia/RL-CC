@@ -51,7 +51,7 @@ class AuroraSender(Sender):
             self.pacing_rate = MAX_RATE * BYTES_PER_PACKET
         if self.pacing_rate < MIN_RATE * BYTES_PER_PACKET:
             self.pacing_rate = MIN_RATE * BYTES_PER_PACKET
-            print("Smaller than " + str(MIN_RATE * BYTES_PER_PACKET))
+            #print("Smaller than " + str(MIN_RATE * BYTES_PER_PACKET))
 
     def record_run(self):
         smi = self.get_run_data()
