@@ -323,7 +323,7 @@ def Test(config_file):
             env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
 
             done = False
-            s = np.array(env.reset())
+            s = np.array(env.reset()).reshape((1, 30))
 
             while not done:
                 a = dqns[i].choose_action(s, 0)
@@ -331,6 +331,7 @@ def Test(config_file):
                 distri[a] += 1
 
                 rewards[i].append(r)
+                s = np.array(s).reshape((1, 30))
 
                 '''
                 sender_mi = env.senders[0].history.back() #get_run_data()
@@ -369,13 +370,14 @@ def Validation(traces, dqn: DQN):
         env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
 
         done = False
-        s = np.array(env.reset())
+        s = np.array(env.reset()).reshape((1, 30))
 
         while not done:
             a = dqn.choose_action(s, 0)
             s, r, done, infos = env.step(ACTION_MAP[int(a)])
 
             rewards.append(r)
+            s = np.array(s).reshape((1, 30))
         
     return sum(rewards) / len(rewards)
 
@@ -434,7 +436,7 @@ class Aurora():
 
         for step in range(1, STEP_NUM+1):
             done = False
-            s = np.array(env.reset())
+            s = np.array(env.reset()).reshape((1, 30))
 
             while not done:
                 # Noisy
@@ -442,7 +444,7 @@ class Aurora():
 
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
-                s_ = np.array(s_)
+                s_ = np.array(s_).reshape((1, 30))
 
                 # clip rewards for numerical stability
                 # clip_r = np.sign(r)
