@@ -75,7 +75,7 @@ MEMORY_CAPACITY = int(1e+5)
 # simulator steps for learning interval
 LEARN_FREQ = 1
 # quantile numbers for IQN
-N_QUANT = 8
+N_QUANT = 64
 N_ACTION = 14
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
@@ -89,7 +89,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 32
 # learning rage
-LR = 2e-6
+LR = 1e-6
 
 
 '''Save&Load Settings'''
@@ -139,8 +139,8 @@ class DQN():
         self.seed = random.seed(13)
         self.seed_t = torch.manual_seed(17)
         self.TAU = 1e-3
-        self.N = 8
-        self.entropy_tau = 0.3
+        self.N = 64
+        self.entropy_tau = 1
         self.lo = -1
         self.alpha = 0.9
         self.GAMMA = GAMMA
