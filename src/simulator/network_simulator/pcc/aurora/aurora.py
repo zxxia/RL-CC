@@ -475,10 +475,10 @@ def Test(config_file):
     rewards = [[],[]]
     dqns = [iqn, iqn_risk]
 
-    logger.log(trace.bandwidths)
 
     for i in range(1, 2):
         for trace in traces:
+            logger.log(trace.bandwidths)
             test_scheduler = TestScheduler(trace)
             env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
 
