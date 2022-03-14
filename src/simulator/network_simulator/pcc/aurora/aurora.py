@@ -460,7 +460,7 @@ class DQN(object):
 
 def Test(config_file):
     traces = generate_traces(config_file, 20, duration=30)
-    traces = generate_traces(config_file, 1, duration=30)
+    traces = generate_traces(config_file, 2, duration=30)
 
     distri = [0 for i in range(N_ACTION)]
 
@@ -477,7 +477,7 @@ def Test(config_file):
 
 
     for i in range(1, 2):
-        for trace in traces:
+        for trace in traces[1:]:
             logger.log(trace.bandwidths)
             test_scheduler = TestScheduler(trace)
             env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
