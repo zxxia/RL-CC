@@ -209,6 +209,8 @@ class DQN():
 
         state = np.array(state)
         state = torch.from_numpy(state).float()#.expand(self.K, self.state_size[0])
+        state = torch.reshape(state, (1, 30))
+
         self.qnetwork_local.eval()
         with torch.no_grad():
             action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
@@ -232,6 +234,9 @@ class DQN():
             rewards = torch.FloatTensor(rewards).unsqueeze(1) 
             dones = torch.FloatTensor(dones).unsqueeze(1)
             weights = torch.FloatTensor(weights).unsqueeze(1)
+
+            logger.log(states)
+            logger.log(next_states)
 
             Q_targets_next, _ = self.qnetwork_target(next_states, self.N)
             Q_targets_next = Q_targets_next.detach() #(batch, num_tau, actions)
@@ -323,7 +328,7 @@ def Test(config_file):
             env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
 
             done = False
-            s = np.array(env.reset()).reshape((1, 30))
+            s = np.array(env.reset())
 
             while not done:
                 a = dqns[i].choose_action(s, 0)
@@ -331,7 +336,6 @@ def Test(config_file):
                 distri[a] += 1
 
                 rewards[i].append(r)
-                s = np.array(s).reshape((1, 30))
 
                 '''
                 sender_mi = env.senders[0].history.back() #get_run_data()
@@ -370,14 +374,13 @@ def Validation(traces, dqn: DQN):
         env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
 
         done = False
-        s = np.array(env.reset()).reshape((1, 30))
+        s = np.array(env.reset())
 
         while not done:
             a = dqn.choose_action(s, 0)
             s, r, done, infos = env.step(ACTION_MAP[int(a)])
 
             rewards.append(r)
-            s = np.array(s).reshape((1, 30))
         
     return sum(rewards) / len(rewards)
 
@@ -436,7 +439,7 @@ class Aurora():
 
         for step in range(1, STEP_NUM+1):
             done = False
-            s = np.array(env.reset()).reshape((1, 30))
+            s = np.array(env.reset())
 
             while not done:
                 # Noisy
@@ -444,7 +447,7 @@ class Aurora():
 
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
-                s_ = np.array(s_).reshape((1, 30))
+                s_ = np.array(s_)
 
                 # clip rewards for numerical stability
                 # clip_r = np.sign(r)
