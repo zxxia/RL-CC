@@ -478,7 +478,7 @@ def Validation(traces = None, config_file = None, iqn = None):
             avg_bw=trace.avg_bw * 1e6 / BITS_PER_BYTE / BYTES_PER_PACKET)
     pkt_level_original_reward = pcc_aurora_reward(tput, avg_lat, loss)
 
-    plot_simulation_log(trace, os.path.join(save_dir, 'aurora_simulation_log.csv'), save_dir, self.cc_name)
+    plot_simulation_log(trace, os.path.join(save_dir, 'aurora_simulation_log.csv'), save_dir, cc_name)
     bin_tput_ts, bin_tput = env.senders[0].bin_tput
     bin_sending_rate_ts, bin_sending_rate = env.senders[0].bin_sending_rate
     lat_ts, lat = env.senders[0].latencies
