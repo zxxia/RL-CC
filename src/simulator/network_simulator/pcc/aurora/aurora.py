@@ -379,6 +379,8 @@ def Validation(traces = None, config_file = None, iqn = None):
     plot_flag = True
     cc_name = 'aurora'
 
+    RList = []
+
     reward_list = []
     loss_list = []
     tput_list = []
@@ -458,8 +460,11 @@ def Validation(traces = None, config_file = None, iqn = None):
         obs_list.append(obs.tolist())            
         obs, rewards, dones, info = env.step(action.item())
 
+        RList.append(rewards)
+
         if dones:
             break
+
     if f_sim_log:
         f_sim_log.close()
 
@@ -501,7 +506,7 @@ def Validation(traces = None, config_file = None, iqn = None):
                      tput * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6, avg_lat,
                      loss, np.mean(reward_list), pkt_level_reward])
 
-    return ts_list, reward_list, loss_list, tput_list, delay_list, send_rate_list, action_list, obs_list, mi_list, pkt_level_reward
+    return sum(RList) / len(RList)
 
 
 class Aurora():
@@ -596,7 +601,8 @@ class Aurora():
                     '| Loss:', round(sum(loss) / len(loss), 3))
 
                 loss = []
-                Validation(traces = validation_traces, iqn = dqn)
+                validation_reward = Validation(traces = validation_traces, iqn = dqn)
+                logger.log('Mean ep 100 return: ', validation_reward)
                 dqn.save_model()
 
         logger.log("The training is done!")
