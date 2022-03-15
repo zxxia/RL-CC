@@ -364,24 +364,144 @@ def Test(config_file):
     for i in range(N_ACTION):
         logger.log("Action ", i, " : ", distri[i])
 
+def Validation(traces = None, config_file = None, iqn = None):
 
-def Validation(traces, dqn: DQN):
-    rewards = []
+    if traces is None:
+        trace = generate_traces(config_file, 1, duration=30)
+    else:
+        trace = traces[0]
 
-    for trace in traces:
-        test_scheduler = TestScheduler(trace)
-        env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
+    if iqn is None:
+        iqn = DQN()
+        iqn.load_model_risk()
 
-        done = False
-        s = np.array(env.reset())
+    save_dir = './log/'
+    plot_flag = True
+    cc_name = 'aurora'
 
-        while not done:
-            a = dqn.choose_action(s, 0)[0]
-            s, r, done, infos = env.step(ACTION_MAP[int(a)])
+    reward_list = []
+    loss_list = []
+    tput_list = []
+    delay_list = []
+    send_rate_list = []
+    ts_list = []
+    action_list = []
+    mi_list = []
+    obs_list = []
 
-            rewards.append(r)
-        
-    return sum(rewards) / len(rewards)
+    os.makedirs(save_dir, exist_ok=True)
+    f_sim_log = open(os.path.join(save_dir, 'aurora_simulation_log.csv'), 'w', 1)
+    writer = csv.writer(f_sim_log, lineterminator='\n')
+    writer.writerow(['timestamp', "target_send_rate", "send_rate",
+                             'recv_rate', 'latency',
+                             'loss', 'reward', "action", "bytes_sent",
+                             "bytes_acked", "bytes_lost", "MI",
+                             "send_start_time",
+                             "send_end_time", 'recv_start_time',
+                             'recv_end_time', 'latency_increase',
+                             "packet_size", 'min_lat', 'sent_latency_inflation',
+                             'latency_ratio', 'send_ratio',
+                             'bandwidth', "queue_delay",
+                             'packet_in_queue', 'queue_size', "recv_ratio", "srtt"])
+
+    test_scheduler = TestScheduler(trace)
+    env = gym.make('AuroraEnv-v0', trace_scheduler=test_scheduler)
+    env.seed(13)
+    obs = np.array(env.reset())
+
+    while True:
+        if env.net.senders[0].got_data:
+            action = iqn.choose_action(obs, 0)[0]
+        else:
+            action = np.array([0])
+
+        # get the new MI and stats collected in the MI
+        # sender_mi = env.senders[0].get_run_data()
+        sender_mi = env.senders[0].history.back() #get_run_data()
+        throughput = sender_mi.get("recv rate")  # bits/sec
+        send_rate = sender_mi.get("send rate")  # bits/sec
+        latency = sender_mi.get("avg latency")
+        loss = sender_mi.get("loss ratio")
+        avg_queue_delay = sender_mi.get('avg queue delay')
+        sent_latency_inflation = sender_mi.get('sent latency inflation')
+        latency_ratio = sender_mi.get('latency ratio')
+        send_ratio = sender_mi.get('send ratio')
+        recv_ratio = sender_mi.get('recv ratio')
+        reward = pcc_aurora_reward(
+            throughput / BITS_PER_BYTE / BYTES_PER_PACKET, latency, loss,
+            trace.avg_bw * 1e6 / BITS_PER_BYTE / BYTES_PER_PACKET,
+            trace.avg_delay * 2 / 1e3)
+ 
+        writer.writerow([
+            round(env.net.get_cur_time(), 6), round(env.senders[0].pacing_rate * BITS_PER_BYTE, 0),
+            round(send_rate, 0), round(throughput, 0), round(latency, 6), loss,
+            round(reward, 4), action.item(), sender_mi.bytes_sent, sender_mi.bytes_acked,
+            sender_mi.bytes_lost, round(sender_mi.send_end, 6) - round(sender_mi.send_start, 6),
+            round(sender_mi.send_start, 6), round(sender_mi.send_end, 6),
+            round(sender_mi.recv_start, 6), round(sender_mi.recv_end, 6),
+            sender_mi.get('latency increase'), sender_mi.packet_size,
+            sender_mi.get('conn min latency'), sent_latency_inflation,
+            latency_ratio, send_ratio,
+                env.links[0].get_bandwidth(
+                    env.net.get_cur_time()) * BYTES_PER_PACKET * BITS_PER_BYTE,
+                    avg_queue_delay, env.links[0].pkt_in_queue, env.links[0].queue_size,
+                    recv_ratio, env.senders[0].srtt])
+
+        reward_list.append(reward)
+        loss_list.append(loss)
+        delay_list.append(latency * 1000)
+        tput_list.append(throughput / 1e6)
+        send_rate_list.append(send_rate / 1e6)
+        ts_list.append(env.net.get_cur_time())
+        action_list.append(action.item())
+        mi_list.append(sender_mi.send_end - sender_mi.send_start)
+        obs_list.append(obs.tolist())            
+        obs, rewards, dones, info = env.step(action.item())
+
+        if dones:
+            break
+    if f_sim_log:
+        f_sim_log.close()
+
+    with open(os.path.join(save_dir, "aurora_packet_log.csv"), 'w', 1) as f:
+        pkt_logger = csv.writer(f, lineterminator='\n')
+        pkt_logger.writerow(['timestamp', 'packet_event_id', 'event_type',
+                                     'bytes', 'cur_latency', 'queue_delay',
+                                     'packet_in_queue', 'sending_rate', 'bandwidth'])
+        pkt_logger.writerows(env.net.pkt_log)
+
+    avg_sending_rate = env.senders[0].avg_sending_rate
+    tput = env.senders[0].avg_throughput
+    avg_lat = env.senders[0].avg_latency
+    loss = env.senders[0].pkt_loss_rate
+    pkt_level_reward = pcc_aurora_reward(tput, avg_lat,loss,
+            avg_bw=trace.avg_bw * 1e6 / BITS_PER_BYTE / BYTES_PER_PACKET)
+    pkt_level_original_reward = pcc_aurora_reward(tput, avg_lat, loss)
+
+    plot_simulation_log(trace, os.path.join(save_dir, 'aurora_simulation_log.csv'), save_dir, self.cc_name)
+    bin_tput_ts, bin_tput = env.senders[0].bin_tput
+    bin_sending_rate_ts, bin_sending_rate = env.senders[0].bin_sending_rate
+    lat_ts, lat = env.senders[0].latencies
+    plot(trace, bin_tput_ts, bin_tput, bin_sending_rate_ts,
+                 bin_sending_rate, tput * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6,
+                 avg_sending_rate * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6,
+                 lat_ts, lat, avg_lat * 1000, loss, pkt_level_original_reward,
+                 pkt_level_reward, save_dir, cc_name)
+
+    with open(os.path.join(save_dir, "{}_summary.csv".format(cc_name)), 'w', 1) as f:
+        summary_writer = csv.writer(f, lineterminator='\n')
+        summary_writer.writerow([
+                    'trace_average_bandwidth', 'trace_average_latency',
+                    'average_sending_rate', 'average_throughput',
+                    'average_latency', 'loss_rate', 'mi_level_reward',
+                    'pkt_level_reward'])
+        summary_writer.writerow(
+                    [trace.avg_bw, trace.avg_delay,
+                     avg_sending_rate * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6,
+                     tput * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6, avg_lat,
+                     loss, np.mean(reward_list), pkt_level_reward])
+
+    return ts_list, reward_list, loss_list, tput_list, delay_list, send_rate_list, action_list, obs_list, mi_list, pkt_level_reward
 
 
 class Aurora():
@@ -408,8 +528,6 @@ class Aurora():
         env.seed(self.seed)
 
         dqn = DQN()
-
-        test_reward = -250
 
         validation_traces = []
         for i in range(20):
@@ -478,14 +596,7 @@ class Aurora():
                     '| Loss:', round(sum(loss) / len(loss), 3))
 
                 loss = []
-                validation_reward = Validation(validation_traces, dqn)
-
-                if step > 900 and validation_reward > test_reward:
-                    test_reward = validation_reward
-                    dqn.save_model()
-                    logger.log("Save model")
-
-                # logger.log log
-                logger.log('Mean ep 100 return: ', validation_reward)
+                Validation(traces = validation_traces, iqn = dqn)
+                dqn.save_model()
 
         logger.log("The training is done!")
