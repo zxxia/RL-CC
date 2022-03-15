@@ -535,7 +535,7 @@ class Aurora():
         dqn = DQN()
 
         validation_traces = []
-        for i in range(20):
+        for i in range(1):
             validation_traces.append(Trace.load_from_file("./validation/" + str(i)))
 
         # model load with check
