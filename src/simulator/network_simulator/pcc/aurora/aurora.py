@@ -305,7 +305,7 @@ class DQN():
 
 def Test(config_file):
     traces = generate_traces(config_file, 20, duration=30)
-    traces = generate_traces(config_file, 100, duration=30)
+    traces = generate_traces(config_file, 1, duration=30)
 
     distri = [0 for i in range(N_ACTION)]
 
@@ -336,7 +336,7 @@ def Test(config_file):
 
                 rewards[i].append(r)
 
-                '''
+                
                 sender_mi = env.senders[0].history.back() #get_run_data()
                 throughput = sender_mi.get("recv rate")  # bits/sec
                 send_rate = sender_mi.get("send rate")  # bits/sec
@@ -352,7 +352,7 @@ def Test(config_file):
                     " | Latency: ", latency,
                     " | Loss: ", loss,
                     " | Real Reward: ", r)
-                '''
+                
 
         rewards[i].sort()
         
