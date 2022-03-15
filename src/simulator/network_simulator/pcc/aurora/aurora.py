@@ -140,7 +140,7 @@ class DQN():
         self.seed_t = torch.manual_seed(17)
         self.TAU = 1e-3
         self.N = 64
-        self.entropy_tau = 10
+        self.entropy_tau = 0.03
         self.lo = -1
         self.alpha = 0.9
         self.GAMMA = GAMMA
