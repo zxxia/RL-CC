@@ -165,8 +165,8 @@ class DQN():
         self.memory.add(state, action, reward, next_state, done)
         
         # Learn every UPDATE_EVERY time steps.
-        self.t_step = (self.t_step + 1) % self.UPDATE_EVERY
-        if self.t_step == 0:
+        self.t_step = self.t_step + 1
+        if self.t_step % self.UPDATE_EVERY == 0:
             # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > self.BATCH_SIZE:
                 experiences = self.memory.sample()
@@ -530,7 +530,7 @@ class Aurora():
 
             while not done:
                 # Noisy
-                a = dqn.choose_action(s, 0)
+                a = dqn.choose_action(s, EPSILON)
 
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
