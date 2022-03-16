@@ -63,3 +63,9 @@ class IQN(nn.Module):
         quantiles, _ = self.forward(inputs, self.K)
         actions = quantiles.mean(dim=1)
         return actions
+
+    def save(self, PATH):
+        torch.save(self.state_dict(),PATH)
+
+    def load(self, PATH):
+        self.load_state_dict(torch.load(PATH))
