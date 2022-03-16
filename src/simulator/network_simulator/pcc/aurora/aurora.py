@@ -37,7 +37,7 @@ from common.utils import set_tf_loglevel, pcc_aurora_reward
 from plot_scripts.plot_packet_log import plot
 from plot_scripts.plot_time_series import plot as plot_simulation_log
 
-from simulator.network_simulator.pcc.aurora.replay_memory_back import ReplayBuffer, PrioritizedReplay
+from simulator.network_simulator.pcc.aurora.replay_memory_back import ReplayBuffer
 from simulator.network_simulator.pcc.aurora.IQN import IQN
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
@@ -89,7 +89,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 32
 # learning rage
-LR = 1e-8
+LR = 1e-5
 
 
 '''Save&Load Settings'''
@@ -111,8 +111,9 @@ def calculate_huber_loss(td_errors, k=1.0):
     Calculate huber loss element-wisely depending on kappa k.
     """
     loss = torch.where(td_errors.abs() <= k, 0.5 * td_errors.pow(2), k * (td_errors.abs() - 0.5 * k))
-    #assert loss.shape == (td_errors.shape[0], 8, 8), "huber loss has wrong shape"
+    assert loss.shape == (td_errors.shape[0], 8, 8), "huber loss has wrong shape"
     return loss
+    
 
 class DQN():
     """Interacts with and learns from the environment."""
@@ -131,40 +132,126 @@ class DQN():
             TAU (float): tau for soft updating the network weights
             GAMMA (float): discount factor
             UPDATE_EVERY (int): update frequency
-            device (str): device that is used for the compute
             seed (int): random seed
         """
         self.state_size = 30
         self.action_size = N_ACTION
-        self.seed = random.seed(13)
-        self.seed_t = torch.manual_seed(17)
-        self.TAU = 1e-3
-        self.N = 64
-        self.entropy_tau = 0.03
-        self.lo = -1
-        self.alpha = 0.9
+        self.seed = random.seed(5)
+        self.TAU = 1e-2
         self.GAMMA = GAMMA
-        
+        self.UPDATE_EVERY = 1
         self.BATCH_SIZE = BATCH_SIZE
         self.Q_updates = 0
         self.n_step = 1
-        self.UPDATE_EVERY = 1
+
+        self.action_step = 4
         self.last_action = None
 
-        
         # IQN-Network
-        self.qnetwork_local = IQN(self.state_size, self.action_size, 64, 13, self.N)
-        self.qnetwork_target = IQN(self.state_size, self.action_size, 64, 13, self.N)
+        self.qnetwork_local = IQN(self.state_size, self.action_size, 64, self.n_step, 5)
+        self.qnetwork_target = IQN(self.state_size, self.action_size, 64, self.n_step, 5)
 
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
         print(self.qnetwork_local)
         
         # Replay memory
-        self.memory = PrioritizedReplay(MEMORY_CAPACITY, self.BATCH_SIZE, seed=17, gamma=self.GAMMA, n_step=1, parallel_env=1)
-
+        self.memory = ReplayBuffer(MEMORY_CAPACITY, BATCH_SIZE, 5, self.GAMMA, self.n_step)
+        
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = 0
     
+    def store_transition(self, state, action, reward, next_state, done):
+        # Save experience in replay memory
+        self.memory.add(state, action, reward, next_state, done)
+        
+        # Learn every UPDATE_EVERY time steps.
+        self.t_step = (self.t_step + 1) % self.UPDATE_EVERY
+        if self.t_step == 0:
+            # If enough samples are available in memory, get random subset and learn
+            if len(self.memory) > self.BATCH_SIZE:
+                experiences = self.memory.sample()
+                loss = self.learn(experiences)
+                self.Q_updates += 1
+
+    def choose_action(self, state, eps=0.):
+        """Returns actions for given state as per current policy. Acting only every 4 frames!
+        
+        Params
+        ======
+            frame: to adjust epsilon
+            state (array_like): current state
+            
+        """
+
+        state = np.array(state)
+
+        state = torch.from_numpy(state).float().unsqueeze(0)
+        self.qnetwork_local.eval()
+        with torch.no_grad():
+            action_values = self.qnetwork_local.get_action(state)
+        self.qnetwork_local.train()
+
+        # Epsilon-greedy action selection
+        if random.random() > eps: # select greedy action if random number is higher than epsilon or noisy network is used!
+            action = np.argmax(action_values.cpu().data.numpy())
+            self.last_action = action
+            return action
+        else:
+            action = random.choice(np.arange(self.action_size))
+            self.last_action = action 
+            return action
+
+
+    def learn(self, experiences):
+        """Update value parameters using given batch of experience tuples.
+        Params
+        ======
+            experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
+            gamma (float): discount factor
+        """
+        self.optimizer.zero_grad()
+        states, actions, rewards, next_states, dones = experiences
+        # Get max predicted Q values (for next states) from target model
+        Q_targets_next, _ = self.qnetwork_target(next_states)
+        Q_targets_next = Q_targets_next.detach().max(2)[0].unsqueeze(1) # (batch_size, 1, N)
+        
+        # Compute Q targets for current states 
+        Q_targets = rewards.unsqueeze(-1) + (self.GAMMA**self.n_step * Q_targets_next * (1. - dones.unsqueeze(-1)))
+        # Get expected Q values from local model
+        Q_expected, taus = self.qnetwork_local(states)
+        Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, 8, 1))
+
+        # Quantile Huber loss
+        td_error = Q_targets - Q_expected
+        assert td_error.shape == (self.BATCH_SIZE, 8, 8), "wrong td error shape"
+        huber_l = calculate_huber_loss(td_error, 1.0)
+        quantil_l = abs(taus -(td_error.detach() < 0).float()) * huber_l / 1.0
+        
+        loss = quantil_l.sum(dim=1).mean(dim=1) # , keepdim=True if per weights get multipl
+        loss = loss.mean()
+
+
+        # Minimize the loss
+        loss.backward()
+        #clip_grad_norm_(self.qnetwork_local.parameters(),1)
+        self.optimizer.step()
+
+        # ------------------- update target network ------------------- #
+        self.soft_update(self.qnetwork_local, self.qnetwork_target)
+        return loss.detach().cpu().numpy()            
+
+    def soft_update(self, local_model, target_model):
+        """Soft update model parameters.
+        θ_target = τ*θ_local + (1 - τ)*θ_target
+        Params
+        ======
+            local_model (PyTorch model): weights will be copied from
+            target_model (PyTorch model): weights will be copied to
+            tau (float): interpolation parameter 
+        """
+        for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
+            target_param.data.copy_(self.TAU*local_param.data + (1.0-self.TAU)*target_param.data)
+
     def save_model(self):
         # save prediction network and target network
         self.qnetwork_local.save(PRED_PATH)
@@ -178,130 +265,7 @@ class DQN():
     def load_model_risk(self):
         self.qnetwork_local.load('./model/iqn_pred_net_risk.pkl')
         self.qnetwork_target.load('./model/iqn_target_net_risk.pkl')
-    
-    def store_transition(self, state, action, reward, next_state, done):
-        # Save experience in replay memory
-        self.memory.add(state, action, reward, next_state, done)
-        loss = None
-        
-        # Learn every UPDATE_EVERY time steps.
-        self.t_step = self.t_step + 1
-        if self.t_step % self.UPDATE_EVERY == 0:
-            # If enough samples are available in memory, get random subset and learn
-            if len(self.memory) > self.BATCH_SIZE:
-                experiences = self.memory.sample()
-                loss = self.learn_per(experiences)
-                self.Q_updates += 1
-        
-        return loss
 
-    def choose_action(self, state, eps=0.):
-        """Returns actions for given state as per current policy. Acting only every 4 frames!
-        
-        Params
-        ======
-            frame: to adjust epsilon
-            state (array_like): current state
-            
-        """
-
-        state = np.array(state)
-        state = torch.from_numpy(state).float()#.expand(self.K, self.state_size[0])
-        state = torch.reshape(state, (1, 30))
-
-        self.qnetwork_local.eval()
-        with torch.no_grad():
-            action_values = self.qnetwork_local.get_qvalues(state)#.mean(0)
-            self.qnetwork_local.train()
-            action = np.argmax(action_values.cpu().data.numpy(), axis=1)
-            return action
-
-    def learn_per(self, experiences):
-            """Update value parameters using given batch of experience tuples.
-            Params
-            ======
-                experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
-                gamma (float): discount factor
-            """
-            self.optimizer.zero_grad()
-            
-            states, actions, rewards, next_states, dones, idx, weights = experiences
-            states = torch.FloatTensor(states)
-            next_states = torch.FloatTensor(np.float32(next_states))
-            actions = torch.LongTensor(actions).unsqueeze(1)
-            rewards = torch.FloatTensor(rewards).unsqueeze(1) 
-            dones = torch.FloatTensor(dones).unsqueeze(1)
-            weights = torch.FloatTensor(weights).unsqueeze(1)
-
-            # logger.log(states.shape)
-            # logger.log(next_states.shape)
-            # logger.log(actions.shape)
-
-            Q_targets_next, _ = self.qnetwork_target(next_states, self.N)
-            Q_targets_next = Q_targets_next.detach() #(batch, num_tau, actions)
-            q_t_n = Q_targets_next.mean(dim=1)
-            # calculate log-pi 
-            logsum = torch.logsumexp(\
-                (Q_targets_next - Q_targets_next.max(2)[0].unsqueeze(-1))/self.entropy_tau, 2).unsqueeze(-1) #logsum trick
-            assert logsum.shape == (self.BATCH_SIZE, self.N, 1), "log pi next has wrong shape"
-            tau_log_pi_next = Q_targets_next - Q_targets_next.max(2)[0].unsqueeze(-1) - self.entropy_tau*logsum
-                
-            pi_target = F.softmax(q_t_n/self.entropy_tau, dim=1).unsqueeze(1)
-
-            Q_target = (self.GAMMA**self.n_step * (pi_target * (Q_targets_next-tau_log_pi_next)*(1 - dones.unsqueeze(-1))).sum(2)).unsqueeze(1)
-            assert Q_target.shape == (self.BATCH_SIZE, 1, self.N)
-
-            q_k_target = self.qnetwork_target.get_qvalues(states).detach()
-            v_k_target = q_k_target.max(1)[0].unsqueeze(-1) # (8,8,1)
-            tau_log_pik = q_k_target - v_k_target - self.entropy_tau*torch.logsumexp(\
-                                                                        (q_k_target - v_k_target)/self.entropy_tau, 1).unsqueeze(-1)
-
-            assert tau_log_pik.shape == (self.BATCH_SIZE, self.action_size), "shape instead is {}".format(tau_log_pik.shape)
-            munchausen_addon = tau_log_pik.gather(1, actions) #.unsqueeze(-1).expand(self.BATCH_SIZE, self.N, 1)
-                
-            # calc munchausen reward:
-            munchausen_reward = (rewards + self.alpha*torch.clamp(munchausen_addon, min=self.lo, max=0)).unsqueeze(-1)
-            assert munchausen_reward.shape == (self.BATCH_SIZE, 1, 1)
-            # Compute Q targets for current states 
-            Q_targets = munchausen_reward + Q_target
-            # Get expected Q values from local model
-            q_k, taus = self.qnetwork_local(states, self.N)
-            Q_expected = q_k.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, self.N, 1))
-            assert Q_expected.shape == (self.BATCH_SIZE, self.N, 1)
-
-            # Quantile Huber loss
-            td_error = Q_targets - Q_expected
-            assert td_error.shape == (self.BATCH_SIZE, self.N, self.N), "wrong td error shape"
-            huber_l = calculate_huber_loss(td_error, 1.0)
-            quantil_l = abs(taus -(td_error.detach() < 0).float()) * huber_l / 1.0
-                
-            loss = quantil_l.sum(dim=1).mean(dim=1, keepdim=True)* weights # , keepdim=True if per weights get multipl
-            loss = loss.mean()
-
-
-            # Minimize the loss
-            loss.backward()
-            clip_grad_norm_(self.qnetwork_local.parameters(),1)
-            self.optimizer.step()
-
-            # ------------------- update target network ------------------- #
-            self.soft_update(self.qnetwork_local, self.qnetwork_target)
-            # update priorities
-            td_error = td_error.sum(dim=1).mean(dim=1,keepdim=True) # not sure about this -> test 
-            self.memory.update_priorities(idx, abs(td_error.data.cpu().numpy()))
-            return loss.detach().cpu().numpy()            
-
-    def soft_update(self, local_model, target_model):
-        """Soft update model parameters.
-        θ_target = τ*θ_local + (1 - τ)*θ_target
-        Params
-        ======
-            local_model (PyTorch model): weights will be copied from
-            target_model (PyTorch model): weights will be copied to
-            tau (float): interpolation parameter 
-        """
-        for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
-            target_param.data.copy_(self.TAU*local_param.data + (1.0-self.TAU)*target_param.data)
 
 def Test(config_file):
     traces = generate_traces(config_file, 20, duration=30)
@@ -363,6 +327,7 @@ def Test(config_file):
     
     for i in range(N_ACTION):
         logger.log("Action ", i, " : ", distri[i])
+
 
 def Validation(traces = None, config_file = None, iqn = None):
 
@@ -575,10 +540,10 @@ class Aurora():
                 # clip_r = np.sign(r)
 
                 # annealing the epsilon(exploration strategy)
-                if number <= int(1e+4):
-                    EPSILON -= 0.9/1e+4
-                elif number <= int(2e+4):
+                if number <= int(1e+5):
                     EPSILON -= 0.09/1e+4
+                elif number <= int(2e+5):
+                    EPSILON -= 0.009/1e+4
                 
                 number += 1
 
