@@ -212,6 +212,7 @@ class DQN():
             experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
             gamma (float): discount factor
         """
+        logger.log(experiences)
         self.optimizer.zero_grad()
         states, actions, rewards, next_states, dones = experiences
         # Get max predicted Q values (for next states) from target model
