@@ -89,7 +89,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 32
 # learning rage
-LR = 1e-4
+LR = 1e-6
 
 
 '''Save&Load Settings'''
@@ -522,12 +522,13 @@ class Aurora():
         number = 0
         loss = []
         RList = []
+        AList = [0 for i in range(N_ACTION)]
 
         EPSILON = 1.0
         # Total simulation step
         STEP_NUM = int(1e+5)
         # save frequency
-        SAVE_FREQ = int(2e+1)
+        SAVE_FREQ = int(1e+1)
 
         for step in range(1, STEP_NUM+1):
             done = False
@@ -541,6 +542,7 @@ class Aurora():
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
                 s_ = np.array(s_)
                 RList.append(r)
+                AList[int(a)] += 1
 
                 # clip rewards for numerical stability
                 # clip_r = np.sign(r)
@@ -571,11 +573,17 @@ class Aurora():
                     '| Used Time:', time_interval,
                     '| Reward:', round(sum(RList) / len(RList), 3),
                     '| Loss:', round(sum(loss) / len(loss), 3))
+                
+                for i in range(N_ACTION):
+                    logger.log(ACTION_MAP[i], ": ", AList[i])
 
+                AList = [0 for i in range(N_ACTION)]
                 loss = []
                 RList = []
                 validation_reward = Validation(traces = validation_traces, iqn = dqn)
                 logger.log('Mean ep 100 return: ', validation_reward)
                 dqn.save_model()
+
+
 
         logger.log("The training is done!")
