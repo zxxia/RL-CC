@@ -89,7 +89,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 32
 # learning rage
-LR = 1e-5
+LR = 1e-4
 
 
 '''Save&Load Settings'''
@@ -546,10 +546,10 @@ class Aurora():
                 # clip_r = np.sign(r)
 
                 # annealing the epsilon(exploration strategy)
-                if number <= int(1e+4):
-                    EPSILON -= 0.9/1e+4
-                elif number <= int(2e+4):
-                    EPSILON -= 0.09/1e+4
+                if number <= int(1e+5):
+                    EPSILON -= 0.9/1e+5
+                elif number <= int(2e+5):
+                    EPSILON -= 0.09/1e+5
                 
                 number += 1
 
