@@ -294,7 +294,7 @@ def Test(config_file):
             s = np.array(env.reset())
 
             while not done:
-                a = dqns[i].choose_action(s, 0)[0]
+                a = dqns[i].choose_action(s, 0)
                 s, r, done, infos = env.step(ACTION_MAP[int(a)])
                 distri[a] += 1
 
@@ -530,7 +530,7 @@ class Aurora():
 
             while not done:
                 # Noisy
-                a = dqn.choose_action(s, 0)[0]
+                a = dqn.choose_action(s, 0)
 
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
