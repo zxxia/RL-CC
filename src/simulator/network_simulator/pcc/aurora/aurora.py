@@ -163,6 +163,7 @@ class DQN():
     def store_transition(self, state, action, reward, next_state, done):
         # Save experience in replay memory
         self.memory.add(state, action, reward, next_state, done)
+        loss = None
         
         # Learn every UPDATE_EVERY time steps.
         self.t_step = self.t_step + 1
@@ -172,6 +173,8 @@ class DQN():
                 experiences = self.memory.sample()
                 loss = self.learn(experiences)
                 self.Q_updates += 1
+        
+        return loss
 
     def choose_action(self, state, eps=0.):
         """Returns actions for given state as per current policy. Acting only every 4 frames!
