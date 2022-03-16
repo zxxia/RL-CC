@@ -427,7 +427,7 @@ def Validation(traces = None, config_file = None, iqn = None):
         action_list.append(action.item())
         mi_list.append(sender_mi.send_end - sender_mi.send_start)
         obs_list.append(obs.tolist())            
-        obs, rewards, dones, info = env.step(action.item())
+        obs, rewards, dones, info = env.step(ACTION_MAP[int(action)])
 
         RList.append(rewards)
 
