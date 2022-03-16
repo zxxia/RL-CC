@@ -212,7 +212,7 @@ class DQN():
             experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
             gamma (float): discount factor
         """
-        logger.log(experiences)
+        # logger.log(experiences)
         self.optimizer.zero_grad()
         states, actions, rewards, next_states, dones = experiences
         # Get max predicted Q values (for next states) from target model
@@ -521,6 +521,7 @@ class Aurora():
         start_time = time.time()
         number = 0
         loss = []
+        RList = []
 
         EPSILON = 1.0
         # Total simulation step
@@ -539,15 +540,16 @@ class Aurora():
                 # take action and get next state
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
                 s_ = np.array(s_)
+                RList.append(r)
 
                 # clip rewards for numerical stability
                 # clip_r = np.sign(r)
 
                 # annealing the epsilon(exploration strategy)
-                if number <= int(1e+5):
+                if number <= int(1e+4):
+                    EPSILON -= 0.9/1e+4
+                elif number <= int(2e+4):
                     EPSILON -= 0.09/1e+4
-                elif number <= int(2e+5):
-                    EPSILON -= 0.009/1e+4
                 
                 number += 1
 
@@ -567,9 +569,11 @@ class Aurora():
                 logger.log('Used Step: ', dqn.t_step,
                     '| Used Trace: ', step,
                     '| Used Time:', time_interval,
+                    '| Reward:', round(sum(RList) / len(RList), 3),
                     '| Loss:', round(sum(loss) / len(loss), 3))
 
                 loss = []
+                RList = []
                 validation_reward = Validation(traces = validation_traces, iqn = dqn)
                 logger.log('Mean ep 100 return: ', validation_reward)
                 dqn.save_model()
