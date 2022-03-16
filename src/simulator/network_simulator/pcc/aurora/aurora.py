@@ -381,7 +381,7 @@ def Validation(traces = None, config_file = None, iqn = None):
 
     while True:
         if env.net.senders[0].got_data:
-            action = iqn.choose_action(obs, 0)[0]
+            action = iqn.choose_action(obs, 0)
         else:
             action = np.array([0])
 
