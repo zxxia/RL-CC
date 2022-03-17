@@ -101,7 +101,7 @@ LOAD = False
 PRED_PATH = './model/iqn_pred_net_risk.pkl'
 TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
-ACTION_MAP = [-1, -0.01, 0.01, 1]
+ACTION_MAP = [-0.5, -0.01, 0.01, 0.5]
 # ACTION_MAP = [-0.8727, -0.3685, -0.1698, -0.0816, -0.04, -0.02, -0.01,   
 #            0.01, 0.02, 0.04, 0.0816, 0.1698, 0.3685, 0.8727]
 
