@@ -232,7 +232,7 @@ class DQN():
 
         # Minimize the loss
         loss.backward()
-        #clip_grad_norm_(self.qnetwork_local.parameters(),1)
+        clip_grad_norm_(self.qnetwork_local.parameters(),1)
         self.optimizer.step()
 
         # ------------------- update target network ------------------- #
