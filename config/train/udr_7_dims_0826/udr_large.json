@@ -1,11 +1,11 @@
 [
     {
         "bandwidth_lower_bound": [
-            0.1,
-            0.1
+            1,
+            1
         ],
         "bandwidth_upper_bound": [
-            0.1,
+            1,
             100
         ],
         "delay": [
