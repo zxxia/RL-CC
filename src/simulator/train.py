@@ -148,7 +148,7 @@ def main():
 
         validation_traces = generate_traces(
             config_file, 10, duration=30)
-        for i in range(1):
+        for i in range(10):
             validation_traces[i].dump("./validation/" + str(i))
 
         train_scheduler = UDRTrainScheduler(
