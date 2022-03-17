@@ -530,6 +530,8 @@ class Aurora():
             s = np.array(env.reset())
 
             while not done:
+
+                logger.log(s)
                 # Noisy
                 a = dqn.choose_action(s, EPSILON)
 
