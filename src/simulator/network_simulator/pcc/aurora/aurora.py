@@ -537,6 +537,8 @@ class Aurora():
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
                 s_ = np.array(s_)
                 RList.append(r)
+                logger.log(r)
+                
                 AList[int(a)] += 1
 
                 # clip rewards for numerical stability
