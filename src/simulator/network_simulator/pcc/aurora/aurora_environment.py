@@ -16,11 +16,11 @@ from simulator.network_simulator.pcc.aurora.schedulers import Scheduler
 
 class AuroraEnvironment(gym.Env):
 
-    def __init__(self, trace_scheduler: Scheduler, history_len: int = 10,
+    def __init__(self, trace_scheduler: Scheduler, history_len: int = 5,
                  # features="sent latency inflation,latency ratio,send ratio",
                  # features: List[str] = ["sent latency inflation",
                  #                       "latency ratio", "recv ratio"],
-                 features: List[str] = ["send rate", "recv rate", "avg latency"],
+                 features: List[str] = ["send rate", "recv rate", "avg latency", "loss ratio"],
                  record_pkt_log: bool = False):
         """Network environment used in simulation."""
         self.record_pkt_log = record_pkt_log

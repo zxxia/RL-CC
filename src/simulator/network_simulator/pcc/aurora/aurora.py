@@ -76,6 +76,7 @@ MEMORY_CAPACITY = int(1e+5)
 LEARN_FREQ = 4
 # quantile numbers for IQN
 N_QUANT = 64
+N_STATE = 20
 N_ACTION = 4
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
@@ -87,7 +88,7 @@ GAMMA = 0.99
 
 '''Training settings'''
 # mini-batch size
-BATCH_SIZE = 32
+BATCH_SIZE = 128
 # learning rage
 LR = 1e-5
 
@@ -134,7 +135,7 @@ class DQN():
             UPDATE_EVERY (int): update frequency
             seed (int): random seed
         """
-        self.state_size = 30
+        self.state_size = N_STATE
         self.action_size = N_ACTION
         self.seed = random.seed(5)
         self.TAU = 1e-2

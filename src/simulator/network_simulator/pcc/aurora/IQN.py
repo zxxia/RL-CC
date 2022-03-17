@@ -17,7 +17,12 @@ class IQN(nn.Module):
         self.layer_size = layer_size
         self.pis = torch.FloatTensor([np.pi*i for i in range(self.n_cos)]).view(1,1,self.n_cos) # Starting from 0 as in the paper 
 
-        self.head = nn.Linear(self.input_shape, layer_size) # cound be a cnn 
+        # self.head = nn.Linear(self.input_shape, layer_size) # cound be a cnn 
+        self.head = nn.Sequential(
+                nn.Linear(self.input_shape, layer_size),
+                nn.ReLU(),
+                nn.Linear(self.layer_size, layer_size),
+            )
         self.cos_embedding = nn.Linear(self.n_cos, layer_size)
         self.ff_1 = nn.Linear(layer_size, layer_size)
         self.ff_2 = nn.Linear(layer_size, action_size)
