@@ -18,8 +18,9 @@ class AuroraEnvironment(gym.Env):
 
     def __init__(self, trace_scheduler: Scheduler, history_len: int = 10,
                  # features="sent latency inflation,latency ratio,send ratio",
-                 features: List[str] = ["sent latency inflation",
-                                        "latency ratio", "recv ratio"],
+                 # features: List[str] = ["sent latency inflation",
+                 #                       "latency ratio", "recv ratio"],
+                 features: List[str] = ["send rate", "recv rate", "avg latency"],
                  record_pkt_log: bool = False):
         """Network environment used in simulation."""
         self.record_pkt_log = record_pkt_log
