@@ -89,7 +89,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 32
 # learning rage
-LR = 5e-6
+LR = 1e-4
 
 
 '''Save&Load Settings'''
@@ -137,15 +137,12 @@ class DQN():
         self.state_size = 30
         self.action_size = N_ACTION
         self.seed = random.seed(5)
-        self.TAU = 2e-3
+        self.TAU = 1e-2
         self.GAMMA = GAMMA
         self.UPDATE_EVERY = 1
         self.BATCH_SIZE = BATCH_SIZE
         self.Q_updates = 0
         self.n_step = 1
-
-        self.action_step = 4
-        self.last_action = None
 
         # IQN-Network
         self.qnetwork_local = IQN(self.state_size, self.action_size, 256, self.n_step, 5)
@@ -197,11 +194,9 @@ class DQN():
         # Epsilon-greedy action selection
         if random.random() > eps: # select greedy action if random number is higher than epsilon or noisy network is used!
             action = np.argmax(action_values.cpu().data.numpy())
-            self.last_action = action
             return action
         else:
             action = random.choice(np.arange(self.action_size))
-            self.last_action = action 
             return action
 
 
@@ -548,10 +543,10 @@ class Aurora():
                 # clip_r = np.sign(r)
 
                 # annealing the epsilon(exploration strategy)
-                if number <= int(1e+5):
-                    EPSILON -= 0.9/1e+5
-                elif number <= int(2e+5):
-                    EPSILON -= 0.09/1e+5
+                if number <= int(1e+4):
+                    EPSILON -= 0.9/1e+4
+                elif number <= int(2e+4):
+                    EPSILON -= 0.09/1e+4
                 
                 number += 1
 
