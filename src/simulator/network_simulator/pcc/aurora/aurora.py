@@ -137,9 +137,9 @@ class DQN():
         self.state_size = 30
         self.action_size = N_ACTION
         self.seed = random.seed(5)
-        self.TAU = 1e-1
+        self.TAU = 1e-2
         self.GAMMA = GAMMA
-        self.UPDATE_EVERY = 1
+        self.UPDATE_EVERY = 20
         self.BATCH_SIZE = BATCH_SIZE
         self.Q_updates = 0
         self.n_step = 1
