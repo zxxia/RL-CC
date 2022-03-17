@@ -267,8 +267,8 @@ class DQN():
 
 
 def Test(config_file):
-    traces = generate_traces(config_file, 20, duration=10)
-    traces = generate_traces(config_file, 1, duration=10)
+    traces = generate_traces(config_file, 20, duration=30)
+    traces = generate_traces(config_file, 1, duration=30)
 
     distri = [0 for i in range(N_ACTION)]
 
@@ -331,7 +331,7 @@ def Test(config_file):
 def Validation(traces = None, config_file = None, iqn = None):
 
     if traces is None:
-        trace = generate_traces(config_file, 1, duration=10)
+        trace = generate_traces(config_file, 1, duration=30)
     else:
         trace = traces[0]
 
