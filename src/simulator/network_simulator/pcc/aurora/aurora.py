@@ -139,7 +139,7 @@ class DQN():
         self.seed = random.seed(5)
         self.TAU = 1e-2
         self.GAMMA = GAMMA
-        self.UPDATE_EVERY = 20
+        self.UPDATE_EVERY = 50
         self.BATCH_SIZE = BATCH_SIZE
         self.Q_updates = 0
         self.n_step = 1
@@ -553,9 +553,9 @@ class Aurora():
 
                 # annealing the epsilon(exploration strategy)
                 if number <= int(1e+4):
-                    EPSILON -= 0.9/1e+4
+                    EPSILON -= 0.8/1e+4
                 elif number <= int(2e+4):
-                    EPSILON -= 0.09/1e+4
+                    EPSILON -= 0.1/1e+4
                 
                 number += 1
 
