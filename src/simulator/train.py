@@ -147,7 +147,7 @@ def main():
                     training_traces.append(Trace.load_from_file(line))
 
         validation_traces = generate_traces(
-            config_file, 1, duration=30)
+            config_file, 1, duration=10)
         for i in range(1):
             validation_traces[i].dump("./validation/" + str(i))
 
