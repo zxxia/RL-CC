@@ -73,7 +73,7 @@ LEARN_START = int(1e+3)
 # (prioritized) experience replay memory size
 MEMORY_CAPACITY = int(1e+5)
 # simulator steps for learning interval
-LEARN_FREQ = 1
+LEARN_FREQ = 4
 # quantile numbers for IQN
 N_QUANT = 64
 N_ACTION = 4
@@ -166,7 +166,7 @@ class DQN():
         self.t_step = self.t_step + 1
         if self.t_step % self.UPDATE_EVERY == 0:
             # If enough samples are available in memory, get random subset and learn
-            if len(self.memory) > self.BATCH_SIZE:
+            if len(self.memory) > LEARN_START:
                 experiences = self.memory.sample()
                 loss = self.learn(experiences)
                 self.Q_updates += 1
@@ -232,7 +232,7 @@ class DQN():
 
         # Minimize the loss
         loss.backward()
-        clip_grad_norm_(self.qnetwork_local.parameters(),1)
+        # clip_grad_norm_(self.qnetwork_local.parameters(),1)
         self.optimizer.step()
 
         # ------------------- update target network ------------------- #
