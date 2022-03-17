@@ -139,7 +139,7 @@ class DQN():
         self.seed = random.seed(5)
         self.TAU = 1e-2
         self.GAMMA = GAMMA
-        self.UPDATE_EVERY = 50
+        self.UPDATE_EVERY = 1
         self.BATCH_SIZE = BATCH_SIZE
         self.Q_updates = 0
         self.n_step = 1
