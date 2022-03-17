@@ -89,7 +89,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 32
 # learning rage
-LR = 1e-6
+LR = 5e-6
 
 
 '''Save&Load Settings'''
@@ -137,7 +137,7 @@ class DQN():
         self.state_size = 30
         self.action_size = N_ACTION
         self.seed = random.seed(5)
-        self.TAU = 1e-2
+        self.TAU = 2e-3
         self.GAMMA = GAMMA
         self.UPDATE_EVERY = 1
         self.BATCH_SIZE = BATCH_SIZE
