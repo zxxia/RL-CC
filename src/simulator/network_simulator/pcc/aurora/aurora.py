@@ -148,8 +148,8 @@ class DQN():
         self.last_action = None
 
         # IQN-Network
-        self.qnetwork_local = IQN(self.state_size, self.action_size, 64, self.n_step, 5)
-        self.qnetwork_target = IQN(self.state_size, self.action_size, 64, self.n_step, 5)
+        self.qnetwork_local = IQN(self.state_size, self.action_size, 256, self.n_step, 5)
+        self.qnetwork_target = IQN(self.state_size, self.action_size, 256, self.n_step, 5)
 
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
         print(self.qnetwork_local)
