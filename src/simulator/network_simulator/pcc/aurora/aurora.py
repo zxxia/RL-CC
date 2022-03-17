@@ -531,7 +531,7 @@ class Aurora():
 
             while not done:
 
-                logger.log(s)
+                # logger.log(s)
                 # Noisy
                 a = dqn.choose_action(s, EPSILON)
 
