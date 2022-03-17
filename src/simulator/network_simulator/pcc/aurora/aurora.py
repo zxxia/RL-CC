@@ -71,12 +71,12 @@ TARGET_REPLACE_ITER = 1
 # simulator steps for start learning
 LEARN_START = int(1e+3)
 # (prioritized) experience replay memory size
-MEMORY_CAPACITY = int(1e+5)
+MEMORY_CAPACITY = int(1e+6)
 # simulator steps for learning interval
 LEARN_FREQ = 1
 # quantile numbers for IQN
 N_QUANT = 64
-N_ACTION = 14
+N_ACTION = 4
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
@@ -101,9 +101,9 @@ LOAD = False
 PRED_PATH = './model/iqn_pred_net_risk.pkl'
 TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
-
-ACTION_MAP = [-0.8727, -0.3685, -0.1698, -0.0816, -0.04, -0.02, -0.01,   
-            0.01, 0.02, 0.04, 0.0816, 0.1698, 0.3685, 0.8727]
+ACTION_MAP = [-1, -0.01, 0.01, 1]
+# ACTION_MAP = [-0.8727, -0.3685, -0.1698, -0.0816, -0.04, -0.02, -0.01,   
+#            0.01, 0.02, 0.04, 0.0816, 0.1698, 0.3685, 0.8727]
 
 
 def calculate_huber_loss(td_errors, k=1.0):
@@ -569,6 +569,7 @@ class Aurora():
 
                 # logger.log log
                 logger.log('Used Step: ', dqn.t_step,
+                    '| EPSILON: ', EPSILON,
                     '| Used Trace: ', step,
                     '| Used Time:', time_interval,
                     '| Reward:', round(sum(RList) / len(RList), 3),
