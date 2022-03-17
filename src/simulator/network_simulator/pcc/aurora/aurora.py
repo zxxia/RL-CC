@@ -537,8 +537,15 @@ class Aurora():
                 s_, r, done, infos = env.step(ACTION_MAP[int(a)])
                 s_ = np.array(s_)
                 RList.append(r)
-                logger.log(r)
-                
+
+                if abs(r) > 10000:
+                    logger.log("Warning")
+                    logger.log(s)
+                    logger.log(s_)
+                    logger.log(a)
+                    logger.log(done)
+                    logger.log(r)
+
                 AList[int(a)] += 1
 
                 # clip rewards for numerical stability
