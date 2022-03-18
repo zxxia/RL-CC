@@ -6,7 +6,7 @@ import warnings
 from mpi4py.MPI import COMM_WORLD
 
 from simulator.network_simulator.pcc.aurora.aurora import Aurora, Test
-from simulator.network_simulator.pcc.aurora.aurora_ppo import Aurora_PPO, Validation
+from simulator.network_simulator.pcc.aurora.aurora_ppo import Aurora_PPO, Validation_PPO
 from simulator.network_simulator.pcc.aurora.schedulers import (
     UDRTrainScheduler,
     CL1TrainScheduler,
@@ -169,9 +169,9 @@ def main():
 
     # Test(config_file)
 
-    '''
+    
     validation_traces = []
-    for i in range(20):
+    for i in range(10):
         validation_traces.append(Trace.load_from_file("./validation/" + str(i)))
 
     aurora_ppo = Aurora_PPO(
@@ -182,11 +182,10 @@ def main():
         tensorboard_log=args.tensorboard_log,
     )
 
-    Validation(validation_traces, aurora_ppo.model)
-    '''
-
+    Validation_PPO(validation_traces, aurora_ppo.model)
     
-    aurora.train(
+
+    aurora.retrain(
         config_file,
         args.total_timesteps,
         train_scheduler,

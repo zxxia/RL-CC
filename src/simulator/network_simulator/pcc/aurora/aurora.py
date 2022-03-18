@@ -488,6 +488,104 @@ class Aurora():
         self.steps_trained = 0
         self.model = DQN()
 
+    def retrain(self, config_file: str, total_timesteps: int,
+              train_scheduler: Scheduler,
+              tb_log_name: str = "", # training_traces: List[Trace] = [],
+              validation_traces: List[Trace] = [],
+              # real_trace_prob: float = 0
+              ):
+
+        env = gym.make('AuroraEnv-v0', trace_scheduler=train_scheduler)
+        env.seed(self.seed)
+
+        dqn = DQN()
+        dqn.load_model_risk()
+
+        validation_traces = []
+        for i in range(10):
+            validation_traces.append(Trace.load_from_file("./validation/" + str(i)))
+
+        # model load with check
+        if LOAD and os.path.isfile(PRED_PATH) and os.path.isfile(TARGET_PATH):
+            dqn.load_model()
+            logger.log('Load complete!')
+        else:
+            result = []
+            logger.log('Initialize results!')
+
+        logger.log('Collecting experience...')
+
+        # check learning time
+        start_time = time.time()
+        number = 0
+        loss = []
+        RList = []
+        AList = [0 for i in range(N_ACTION)]
+
+        EPSILON = 0.1
+        # Total simulation step
+        STEP_NUM = int(1e+4)
+        # save frequency
+        SAVE_FREQ = int(2e+1)
+
+        for step in range(1, STEP_NUM+1):
+            done = False
+            s = np.array(env.reset())
+
+            while not done:
+
+                # logger.log(s)
+                # Noisy
+                a = dqn.choose_action(s, EPSILON)
+
+                # take action and get next state
+                s_, r, done, infos = env.step(ACTION_MAP[int(a)])
+                s_ = np.array(s_)
+                RList.append(r)
+
+                if abs(r) > 1000000:
+                    logger.log("Warning")
+                    logger.log(s)
+                    logger.log(s_)
+                    logger.log(a)
+                    logger.log(done)
+                    logger.log(r)
+
+                AList[int(a)] += 1
+                
+                number += 1
+
+                # store the transition
+                temp = dqn.store_transition(s, a, r, s_, done)
+
+                if temp is not None:
+                    loss.append(temp.item())
+                
+                s = s_
+
+            # logger.log log and save
+            if len(loss) != 0 and step % SAVE_FREQ == 0:
+                time_interval = round(time.time() - start_time, 2)
+
+                # logger.log log
+                logger.log('Used Step: ', dqn.t_step,
+                    '| Used Trace: ', step,
+                    '| Used Time:', time_interval,
+                    '| Reward:', round(sum(RList) / len(RList), 3),
+                    '| Loss:', round(sum(loss) / len(loss), 3))
+                
+                for i in range(N_ACTION):
+                    logger.log(ACTION_MAP[i], ": ", AList[i])
+
+                AList = [0 for i in range(N_ACTION)]
+                loss = []
+                RList = []
+                validation_reward = Validation(traces = validation_traces, iqn = dqn)
+                logger.log('Mean ep 100 return: ', validation_reward)
+                dqn.save_model()
+
+        logger.log("The training is done!")
+
     def train(self, config_file: str, total_timesteps: int,
               train_scheduler: Scheduler,
               tb_log_name: str = "", # training_traces: List[Trace] = [],
@@ -542,7 +640,7 @@ class Aurora():
                 s_ = np.array(s_)
                 RList.append(r)
 
-                if abs(r) > 10000:
+                if abs(r) > 1000000:
                     logger.log("Warning")
                     logger.log(s)
                     logger.log(s_)

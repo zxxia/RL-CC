@@ -188,7 +188,7 @@ class SaveOnBestTrainingRewardCallback(BaseCallback):
                 self.prev_t = cur_t
         return True
 
-def Validation(traces, ppo):
+def Validation_PPO(traces, ppo):
     totalR = 0
     numberR = 0
 
