@@ -77,7 +77,7 @@ LEARN_FREQ = 4
 # quantile numbers for IQN
 N_QUANT = 64
 N_STATE = 20
-N_ACTION = 14
+N_ACTION = 4
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
@@ -88,7 +88,7 @@ GAMMA = 0.99
 
 '''Training settings'''
 # mini-batch size
-BATCH_SIZE = 128
+BATCH_SIZE = 256
 # learning rage
 LR = 1e-4
 
@@ -102,9 +102,9 @@ LOAD = False
 PRED_PATH = './model/iqn_pred_net_risk.pkl'
 TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
-# ACTION_MAP = [-0.5, -0.01, 0.01, 0.5]
-ACTION_MAP = [-0.8727, -0.3685, -0.1698, -0.0816, -0.04, -0.02, -0.01,   
-            0.01, 0.02, 0.04, 0.0816, 0.1698, 0.3685, 0.8727]
+ACTION_MAP = [-0.5, -0.01, 0.01, 0.5]
+# ACTION_MAP = [-0.8727, -0.3685, -0.1698, -0.0816, -0.04, -0.02, -0.01,   
+#            0.01, 0.02, 0.04, 0.0816, 0.1698, 0.3685, 0.8727]
 
 
 def calculate_huber_loss(td_errors, k=1.0):
@@ -525,7 +525,7 @@ class Aurora():
         # Total simulation step
         STEP_NUM = int(1e+5)
         # save frequency
-        SAVE_FREQ = int(1e+1)
+        SAVE_FREQ = int(2e+1)
 
         for step in range(1, STEP_NUM+1):
             done = False
