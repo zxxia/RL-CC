@@ -169,7 +169,7 @@ def main():
 
     # Test(config_file)
 
-    
+    '''
     validation_traces = []
     for i in range(10):
         validation_traces.append(Trace.load_from_file("./validation/" + str(i)))
@@ -183,7 +183,7 @@ def main():
     )
 
     Validation_PPO(validation_traces, aurora_ppo.model)
-    
+    '''
 
     aurora.retrain(
         config_file,
