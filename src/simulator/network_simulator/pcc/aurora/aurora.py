@@ -211,6 +211,7 @@ class DQN():
         # logger.log(experiences)
         self.optimizer.zero_grad()
 
+        '''
         states, actions, rewards, next_states, dones = experiences
         # Get max predicted Q values (for next states) from target model
         Q_targets_next, _ = self.qnetwork_target(next_states)
@@ -230,6 +231,51 @@ class DQN():
         
         loss = quantil_l.sum(dim=1).mean(dim=1) # , keepdim=True if per weights get multipl
         loss = loss.mean()
+
+        '''
+
+        self.entropy_tau = 0.03
+        self.lo = -1
+        self.alpha = 0.9
+
+        states, actions, rewards, next_states, dones = experiences
+        Q_targets_next, _ = self.qnetwork_target(next_states)
+        Q_targets_next = Q_targets_next.detach() #(batch, num_tau, actions)
+        q_t_n = Q_targets_next.mean(dim=1)
+
+        # calculate log-pi 
+        logsum = torch.logsumexp(\
+            (q_t_n - q_t_n.max(1)[0].unsqueeze(-1))/self.entropy_tau, 1).unsqueeze(-1) #logsum trick
+        tau_log_pi_next = (q_t_n - q_t_n.max(1)[0].unsqueeze(-1) - self.entropy_tau*logsum).unsqueeze(1)
+            
+        pi_target = F.softmax(q_t_n/self.entropy_tau, dim=1).unsqueeze(1)
+
+        Q_target = (self.GAMMA**self.n_step * (pi_target * (Q_targets_next-tau_log_pi_next)*(1 - dones.unsqueeze(-1))).sum(2)).unsqueeze(1)
+
+        q_k_target = self.qnetwork_target.get_qvalues(states).detach()
+        v_k_target = q_k_target.max(1)[0].unsqueeze(-1) 
+        tau_log_pik = q_k_target - v_k_target - self.entropy_tau*torch.logsumexp(\
+                                                                (q_k_target - v_k_target)/self.entropy_tau, 1).unsqueeze(-1)
+
+        munchausen_addon = tau_log_pik.gather(1, actions)
+            
+        # calc munchausen reward:
+        munchausen_reward = (rewards + self.alpha*torch.clamp(munchausen_addon, min=self.lo, max=0)).unsqueeze(-1)
+
+        # Compute Q targets for current states 
+        Q_targets = munchausen_reward + Q_target
+        # Get expected Q values from local model
+        q_k, taus = self.qnetwork_local(states)
+        Q_expected = q_k.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, 8, 1))
+
+        # Quantile Huber loss
+        td_error = Q_targets - Q_expected
+        huber_l = calculate_huber_loss(td_error, 1.0)
+        quantil_l = abs(taus -(td_error.detach() < 0).float()) * huber_l / 1.0
+            
+        loss = quantil_l.sum(dim=1).mean(dim=1) # , keepdim=True if per weights get multipl
+        loss = loss.mean()
+        
 
         # Minimize the loss
         loss.backward()
@@ -621,7 +667,7 @@ class Aurora():
 
         EPSILON = 1.0
         # Total simulation step
-        STEP_NUM = int(1e+5)
+        STEP_NUM = int(1e+4)
         # save frequency
         SAVE_FREQ = int(2e+1)
 

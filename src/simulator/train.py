@@ -185,7 +185,7 @@ def main():
     Validation_PPO(validation_traces, aurora_ppo.model)
     '''
 
-    aurora.retrain(
+    aurora.train(
         config_file,
         args.total_timesteps,
         train_scheduler,
