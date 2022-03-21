@@ -571,7 +571,7 @@ class Aurora():
         RList = []
         AList = [0 for i in range(N_ACTION)]
 
-        EPSILON = 0.1
+        EPSILON = 0.05
         # Total simulation step
         STEP_NUM = int(1e+4)
         # save frequency
@@ -698,7 +698,7 @@ class Aurora():
                 s_ = np.array(s_)
                 RList.append(r)
 
-                if abs(r) > 1000000:
+                if abs(r) > 2000000:
                     logger.log("Warning")
                     logger.log(s)
                     logger.log(s_)
