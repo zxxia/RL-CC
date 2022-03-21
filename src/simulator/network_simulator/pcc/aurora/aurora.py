@@ -37,7 +37,7 @@ from common.utils import set_tf_loglevel, pcc_aurora_reward
 from plot_scripts.plot_packet_log import plot
 from plot_scripts.plot_time_series import plot as plot_simulation_log
 
-from simulator.network_simulator.pcc.aurora.replay_memory_back import ReplayBuffer
+from simulator.network_simulator.pcc.aurora.replay_memory_back import ReplayBuffer, PrioritizedReplay
 from simulator.network_simulator.pcc.aurora.IQN import IQN
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
@@ -71,7 +71,7 @@ TARGET_REPLACE_ITER = 1
 # simulator steps for start learning
 LEARN_START = int(1e+3)
 # (prioritized) experience replay memory size
-MEMORY_CAPACITY = int(1e+5)
+MEMORY_CAPACITY = int(2e+5)
 # simulator steps for learning interval
 LEARN_FREQ = 4
 # quantile numbers for IQN
@@ -90,7 +90,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 256
 # learning rage
-LR = 1e-3
+LR = 1e-4
 
 
 '''Save&Load Settings'''
@@ -187,18 +187,18 @@ class DQN():
         state = np.array(state)
 
         state = torch.from_numpy(state).float().unsqueeze(0)
-        self.qnetwork_local.eval()
+        # self.qnetwork_local.eval()
         with torch.no_grad():
             action_values = self.qnetwork_local.get_action(state)
-        self.qnetwork_local.train()
+        # self.qnetwork_local.train()
 
         # Epsilon-greedy action selection
-        if random.random() > eps: # select greedy action if random number is higher than epsilon or noisy network is used!
-            action = np.argmax(action_values.cpu().data.numpy())
-            return action
-        else:
-            action = random.choice(np.arange(self.action_size))
-            return action
+        #if random.random() > eps: # select greedy action if random number is higher than epsilon or noisy network is used!
+        action = np.argmax(action_values.cpu().data.numpy())
+        return action
+        #else:
+        #    action = random.choice(np.arange(self.action_size))
+        #    return action
 
 
     def learn(self, experiences):
@@ -385,6 +385,9 @@ def Validation(traces = None, config_file = None, iqn = None):
         iqn.load_model_risk()
 
     RList = []
+
+    iqn.qnetwork_local.eval()
+    iqn.qnetwork_target.eval()
     
     for i in range(len(traces)):
         trace = traces[i]
@@ -574,6 +577,9 @@ class Aurora():
         # save frequency
         SAVE_FREQ = int(2e+1)
 
+        dqn.qnetwork_local.train()
+        dqn.qnetwork_target.train()
+
         for step in range(1, STEP_NUM+1):
             done = False
             s = np.array(env.reset())
@@ -630,6 +636,9 @@ class Aurora():
                 logger.log('Mean ep 100 return: ', validation_reward)
                 dqn.save_model()
 
+                dqn.qnetwork_local.train()
+                dqn.qnetwork_target.train()
+
         logger.log("The training is done!")
 
     def train(self, config_file: str, total_timesteps: int,
@@ -670,6 +679,9 @@ class Aurora():
         STEP_NUM = int(1e+4)
         # save frequency
         SAVE_FREQ = int(2e+1)
+
+        dqn.qnetwork_local.train()
+        dqn.qnetwork_target.train()
 
         for step in range(1, STEP_NUM+1):
             done = False
@@ -737,6 +749,7 @@ class Aurora():
                 logger.log('Mean ep 100 return: ', validation_reward)
                 dqn.save_model()
 
-
+                dqn.qnetwork_local.train()
+                dqn.qnetwork_target.train()
 
         logger.log("The training is done!")

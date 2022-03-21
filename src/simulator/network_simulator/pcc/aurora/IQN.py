@@ -5,6 +5,42 @@ import torch.nn.functional as F
 import numpy as np
 import math
 
+class NoisyLinear(nn.Linear):
+    # Noisy Linear Layer for independent Gaussian Noise
+    def __init__(self, in_features, out_features, sigma_init=0.017, bias=True):
+        super(NoisyLinear, self).__init__(in_features, out_features, bias=bias)
+        # make the sigmas trainable:
+        self.sigma_weight = nn.Parameter(torch.full((out_features, in_features), sigma_init))
+        # not trainable tensor for the nn.Module
+        self.register_buffer("epsilon_weight", torch.zeros(out_features, in_features))
+
+        # extra parameter for the bias and register buffer for the bias parameter
+        self.sigma_bias = nn.Parameter(torch.full((out_features,), sigma_init))
+        self.register_buffer("epsilon_bias", torch.zeros(out_features))
+    
+        # reset parameter as initialization of the layer
+        self.reset_parameter()
+    
+    def reset_parameter(self):
+        """
+        initialize the parameter of the layer and bias
+        """
+        std = math.sqrt(3/self.in_features)
+        self.weight.data.uniform_(-std, std)
+        self.bias.data.uniform_(-std, std)
+
+    
+    def forward(self, input):
+        # sample random noise in sigma weight buffer and bias buffer
+        if self.training:
+            self.epsilon_weight.normal_()
+            bias = self.bias
+            self.epsilon_bias.normal_()
+            bias = bias + self.sigma_bias * self.epsilon_bias
+            return F.linear(input, self.weight + self.sigma_weight * self.epsilon_weight, bias)
+        else:
+            F.linear(input, self.weight, self.bias)
+
 class IQN(nn.Module):
     def __init__(self, state_size, action_size, layer_size, n_step, seed, layer_type="ff"):
         super(IQN, self).__init__()
@@ -17,6 +53,8 @@ class IQN(nn.Module):
         self.layer_size = layer_size
         self.pis = torch.FloatTensor([np.pi*i for i in range(self.n_cos)]).view(1,1,self.n_cos) # Starting from 0 as in the paper 
 
+        layer = NoisyLinear
+        # layer = nn.Linear
         # self.head = nn.Linear(self.input_shape, layer_size) # cound be a cnn 
         self.head = nn.Sequential(
                 nn.Linear(self.input_shape, layer_size),
@@ -24,8 +62,11 @@ class IQN(nn.Module):
                 nn.Linear(self.layer_size, layer_size),
             )
         self.cos_embedding = nn.Linear(self.n_cos, layer_size)
-        self.ff_1 = nn.Linear(layer_size, layer_size)
-        self.ff_2 = nn.Linear(layer_size, action_size)
+        
+        self.ff_1 = layer(layer_size, layer_size)
+        self.ff_2 = layer(layer_size, action_size)
+        # self.ff_1 = nn.Linear(layer_size, layer_size)
+        # self.ff_2 = nn.Linear(layer_size, action_size)
         #weight_init([self.head_1, self.ff_1])
 
 
