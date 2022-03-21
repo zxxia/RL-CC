@@ -595,7 +595,7 @@ class Aurora():
                 s_ = np.array(s_)
                 RList.append(r)
 
-                if abs(r) > 1000000:
+                if abs(r) > 2000000:
                     logger.log("Warning")
                     logger.log(s)
                     logger.log(s_)
@@ -712,10 +712,10 @@ class Aurora():
                 # clip_r = np.sign(r)
 
                 # annealing the epsilon(exploration strategy)
-                if number <= int(1e+4):
-                    EPSILON -= 0.8/1e+4
-                elif number <= int(2e+4):
-                    EPSILON -= 0.1/1e+4
+                if number <= int(5e+4):
+                    EPSILON -= 0.8/5e+4
+                elif number <= int(1e+5):
+                    EPSILON -= 0.1/5e+4
                 
                 number += 1
 
