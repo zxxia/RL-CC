@@ -39,7 +39,7 @@ class NoisyLinear(nn.Linear):
             bias = bias + self.sigma_bias * self.epsilon_bias
             return F.linear(input, self.weight + self.sigma_weight * self.epsilon_weight, bias)
         else:
-            F.linear(input, self.weight, self.bias)
+            return F.linear(input, self.weight, self.bias)
 
 class IQN(nn.Module):
     def __init__(self, state_size, action_size, layer_size, n_step, seed, layer_type="ff"):
@@ -68,8 +68,6 @@ class IQN(nn.Module):
         # self.ff_1 = nn.Linear(layer_size, layer_size)
         # self.ff_2 = nn.Linear(layer_size, action_size)
         #weight_init([self.head_1, self.ff_1])
-
-
         
     def calc_cos(self, batch_size, n_tau=8):
         """
