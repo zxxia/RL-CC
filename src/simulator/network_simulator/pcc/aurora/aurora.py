@@ -716,6 +716,8 @@ class Aurora():
                     EPSILON -= 0.8/5e+4
                 elif number <= int(1e+5):
                     EPSILON -= 0.1/5e+4
+                elif number <= int(2e+5):
+                    EPSILON -= 0.05/1e+5
                 
                 number += 1
 
