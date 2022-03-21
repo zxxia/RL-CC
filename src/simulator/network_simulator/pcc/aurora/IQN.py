@@ -53,8 +53,8 @@ class IQN(nn.Module):
         self.layer_size = layer_size
         self.pis = torch.FloatTensor([np.pi*i for i in range(self.n_cos)]).view(1,1,self.n_cos) # Starting from 0 as in the paper 
 
-        layer = NoisyLinear
-        # layer = nn.Linear
+        # layer = NoisyLinear
+        layer = nn.Linear
         # self.head = nn.Linear(self.input_shape, layer_size) # cound be a cnn 
         self.head = nn.Sequential(
                 nn.Linear(self.input_shape, layer_size),

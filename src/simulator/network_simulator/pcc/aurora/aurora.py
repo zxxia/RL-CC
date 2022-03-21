@@ -90,7 +90,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 256
 # learning rage
-LR = 1e-4
+LR = 2e-4
 
 
 '''Save&Load Settings'''
@@ -193,12 +193,12 @@ class DQN():
         # self.qnetwork_local.train()
 
         # Epsilon-greedy action selection
-        #if random.random() > eps: # select greedy action if random number is higher than epsilon or noisy network is used!
-        action = np.argmax(action_values.cpu().data.numpy())
-        return action
-        #else:
-        #    action = random.choice(np.arange(self.action_size))
-        #    return action
+        if random.random() > eps: # select greedy action if random number is higher than epsilon or noisy network is used!
+            action = np.argmax(action_values.cpu().data.numpy())
+            return action
+        else:
+            action = random.choice(np.arange(self.action_size))
+            return action
 
 
     def learn(self, experiences):
