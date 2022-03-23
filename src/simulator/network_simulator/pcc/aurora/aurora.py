@@ -318,7 +318,7 @@ class DQN():
 
         Q_target = (self.GAMMA**self.n_step * (pi_target * (Q_targets_next-tau_log_pi_next)*(1 - dones.unsqueeze(-1))).sum(2)).unsqueeze(1)
             
-        q_k_target = self.qnetwork_target.get_qvalues(states).detach()
+        q_k_target = self.qnetwork_target.get_action(states).detach()
         v_k_target = q_k_target.max(1)[0].unsqueeze(-1) # (8,8,1)
         tau_log_pik = q_k_target - v_k_target - self.entropy_tau*torch.logsumexp(\
                                                                     (q_k_target - v_k_target)/self.entropy_tau, 1).unsqueeze(-1)
