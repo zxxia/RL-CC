@@ -157,8 +157,8 @@ class DQN():
         print(self.qnetwork_local)
         
         # Replay memory
-        # self.memory = ReplayBuffer(MEMORY_CAPACITY, BATCH_SIZE, 5, self.GAMMA, self.n_step)
-        self.memory = PrioritizedReplay(MEMORY_CAPACITY, BATCH_SIZE, 5, self.GAMMA, self.n_step)
+        self.memory = ReplayBuffer(MEMORY_CAPACITY, BATCH_SIZE, 5, self.GAMMA, self.n_step)
+        # self.memory = PrioritizedReplay(MEMORY_CAPACITY, BATCH_SIZE, 5, self.GAMMA, self.n_step)
         
         # Initialize time step (for updating every UPDATE_EVERY steps)
         self.t_step = 0
@@ -174,8 +174,8 @@ class DQN():
             # If enough samples are available in memory, get random subset and learn
             if len(self.memory) > LEARN_START:
                 experiences = self.memory.sample()
-                # loss = self.learn(experiences)
-                loss = self.learn_per(experiences)
+                loss = self.learn(experiences)
+                # loss = self.learn_per(experiences)
                 self.Q_updates += 1
         
         return loss
@@ -743,7 +743,7 @@ class Aurora():
 
         EPSILON = 1.0
         # Total simulation step
-        STEP_NUM = int(1e+4)
+        STEP_NUM = int(2e+4)
         # save frequency
         SAVE_FREQ = int(2e+1)
 
