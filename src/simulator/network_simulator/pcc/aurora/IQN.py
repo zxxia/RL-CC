@@ -74,6 +74,10 @@ class IQN(nn.Module):
         Calculating the cosinus values depending on the number of tau samples
         """
         taus = torch.rand(batch_size, n_tau).unsqueeze(-1) #(batch_size, n_tau, 1)
+
+        # Risk
+        taus = taus * 0.2
+
         cos = torch.cos(taus*self.pis)
 
         assert cos.shape == (batch_size,n_tau,self.n_cos), "cos shape is incorrect"
