@@ -14,7 +14,6 @@ import time
 import types
 from typing import List, Tuple, Union
 import warnings
-from cv2 import mean
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from mpi4py.MPI import COMM_WORLD
@@ -438,7 +437,7 @@ def Test(config_file):
         logger.log("Ratio: ", ratio)
         # logger.log("IQN: ", rewards[0][int(ratio * len(rewards[0]))])
         logger.log("IQN: ", rewards[1][int(ratio * len(rewards[1]))])
-    logger.log("Mean: ", mean(rewards[1]))
+    logger.log("Mean: ", sum(rewards[1]) / len(rewards[1]))
 
     for i in range(N_ACTION):
         logger.log("Action ", i, " : ", distri[i])
