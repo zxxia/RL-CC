@@ -76,7 +76,7 @@ class IQN(nn.Module):
         taus = torch.rand(batch_size, n_tau).unsqueeze(-1) #(batch_size, n_tau, 1)
 
         # Risk
-        taus = taus * 1
+        taus = taus * 0.2
 
         cos = torch.cos(taus*self.pis)
 
