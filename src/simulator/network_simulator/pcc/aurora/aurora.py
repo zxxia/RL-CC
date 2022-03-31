@@ -83,7 +83,7 @@ QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
 '''Environment Settings'''
 # gamma for MDP
-GAMMA = 0.99
+GAMMA = 0.0
 
 
 '''Training settings'''
