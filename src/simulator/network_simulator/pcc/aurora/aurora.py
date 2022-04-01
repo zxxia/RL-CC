@@ -615,8 +615,8 @@ def Validation(traces = None, config_file = None, iqn = None):
                         tput * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6, avg_lat,
                         loss, np.mean(reward_list), pkt_level_reward])
 
-    for i in range(len(RList)):
-        logger.log(RList[i], ", ", EstR[i])
+    # for i in range(len(RList)):
+    #    logger.log(RList[i], ", ", EstR[i])
 
     return sum(RList) / len(RList)
 
