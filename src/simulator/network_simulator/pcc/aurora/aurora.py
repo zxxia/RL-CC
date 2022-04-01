@@ -379,6 +379,27 @@ class DQN():
         self.qnetwork_local.load('./model/iqn_pred_net_risk.pkl')
         self.qnetwork_target.load('./model/iqn_target_net_risk.pkl')
 
+    def test(self, states, actions, rewards, next_states, dones):
+        states = torch.FloatTensor(states)
+        next_states = torch.FloatTensor(np.float32(next_states))
+        actions = torch.LongTensor(actions).unsqueeze(1)
+        rewards = torch.FloatTensor(rewards).unsqueeze(1) 
+        dones = torch.FloatTensor(dones).unsqueeze(1)
+
+        Q_targets_next, _ = self.qnetwork_target(next_states)
+        logger.log(Q_targets_next.size())
+        Q_targets_next = Q_targets_next.detach().max(2)[0].unsqueeze(1)
+        logger.log(Q_targets_next.size())
+        Q_targets = rewards.unsqueeze(-1) + (self.GAMMA**self.n_step * Q_targets_next * (1. - dones.unsqueeze(-1)))
+        logger.log(Q_targets.size())
+
+        # Get expected Q values from local model
+        Q_expected, taus = self.qnetwork_local(states)
+        logger.log(Q_expected.size())
+        Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(1, 8, 1))
+        logger.log(Q_expected.size())
+        logger.log()
+
 
 def Test(config_file):
     traces = generate_traces(config_file, 20, duration=30)
@@ -546,19 +567,7 @@ def Validation(traces = None, config_file = None, iqn = None):
 
             RList.append(rewards)
 
-            Q_targets_next, _ = iqn.qnetwork_target(next_obs)
-            logger.log(Q_targets_next.size())
-            Q_targets_next = Q_targets_next.detach().max(2)[0].unsqueeze(1)
-            logger.log(Q_targets_next.size())
-            Q_targets = rewards.unsqueeze(-1) + (iqn.GAMMA**iqn.n_step * Q_targets_next * (1. - dones.unsqueeze(-1)))
-            logger.log(Q_targets.size())
-
-            # Get expected Q values from local model
-            Q_expected, taus = iqn.qnetwork_local(obs)
-            logger.log(Q_expected.size())
-            Q_expected = Q_expected.gather(2, action.unsqueeze(-1).expand(1, 8, 1))
-            logger.log(Q_expected.size())
-            logger.log()
+            iqn.test(obs, action, rewards, next_obs, dones)
 
             obs = next_obs
 
