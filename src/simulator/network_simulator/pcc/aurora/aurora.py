@@ -90,7 +90,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 256
 # learning rage
-LR = 2e-4
+LR = 5e-4
 
 
 '''Save&Load Settings'''
@@ -99,8 +99,8 @@ LR = 2e-4
 SAVE = True
 LOAD = False
 # paths for predction net, target net, result log
-PRED_PATH = './MIQN/iqn_pred_net_risk.pkl'
-TARGET_PATH = './MIQN/iqn_target_net_risk.pkl'
+PRED_PATH = './model/iqn_pred_net_risk.pkl'
+TARGET_PATH = './model/iqn_target_net_risk.pkl'
 
 # ACTION_MAP = [-0.5, -0.01, 0.01, 0.5]
 ACTION_MAP = [-0.8727, -0.3685, -0.1698, -0.0816, -0.04, -0.02, -0.01,   
@@ -138,7 +138,7 @@ class DQN():
         self.state_size = N_STATE
         self.action_size = N_ACTION
         self.seed = random.seed(5)
-        self.TAU = 1e-2
+        self.TAU = 0.1
         self.GAMMA = GAMMA
         self.UPDATE_EVERY = LEARN_FREQ
         self.BATCH_SIZE = BATCH_SIZE
@@ -567,7 +567,7 @@ def Validation(traces = None, config_file = None, iqn = None):
             next_obs, rewards, dones, info = env.step(ACTION_MAP[int(action)])
 
             RList.append(rewards)
-            EstR.append(iqn.test(obs, action, rewards, next_obs, dones).item())
+            # EstR.append(iqn.test(obs, action, rewards, next_obs, dones).item())
 
             obs = next_obs
 
