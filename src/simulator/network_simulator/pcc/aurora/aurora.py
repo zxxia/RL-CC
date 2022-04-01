@@ -376,8 +376,8 @@ class DQN():
         self.qnetwork_target.load('./model/iqn_target_net.pkl')
     
     def load_model_risk(self):
-        self.qnetwork_local.load('./model/iqn_pred_net_risk.pkl')
-        self.qnetwork_target.load('./model/iqn_target_net_risk.pkl')
+        self.qnetwork_local.load('./MIQN/iqn_pred_net_risk.pkl')
+        self.qnetwork_target.load('./MIQN/iqn_target_net_risk.pkl')
 
     def test(self, states, actions, rewards, next_states, dones):
         states = torch.FloatTensor(np.array([states]))
