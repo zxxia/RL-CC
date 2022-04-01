@@ -567,7 +567,7 @@ def Validation(traces = None, config_file = None, iqn = None):
             next_obs, rewards, dones, info = env.step(ACTION_MAP[int(action)])
 
             RList.append(rewards)
-            EstR.append(iqn.test(obs, action, rewards, next_obs, dones))
+            EstR.append(iqn.test(obs, action, rewards, next_obs, dones).item())
 
             obs = next_obs
 
