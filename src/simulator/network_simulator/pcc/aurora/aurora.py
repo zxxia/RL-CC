@@ -382,7 +382,7 @@ class DQN():
     def test(self, states, actions, rewards, next_states, dones):
         states = torch.FloatTensor(np.array([states]))
         next_states = torch.FloatTensor(np.array([next_states]))
-        actions = torch.LongTensor(actions).unsqueeze(1)
+        actions = torch.LongTensor(np.array([actions])).unsqueeze(1)
         rewards = torch.FloatTensor(np.array([rewards])).unsqueeze(1) 
         dones = torch.FloatTensor(np.array([dones])).unsqueeze(1)
 
@@ -396,7 +396,7 @@ class DQN():
         # Get expected Q values from local model
         Q_expected, taus = self.qnetwork_local(states)
         logger.log(Q_expected.size())
-        Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(1, 8, 1))
+        Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(0, 8, 1))
         logger.log(Q_expected.size())
         logger.log()
 
