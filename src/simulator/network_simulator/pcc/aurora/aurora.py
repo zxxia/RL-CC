@@ -112,7 +112,7 @@ def calculate_huber_loss(td_errors, k=1.0):
     Calculate huber loss element-wisely depending on kappa k.
     """
     loss = torch.where(td_errors.abs() <= k, 0.5 * td_errors.pow(2), k * (td_errors.abs() - 0.5 * k))
-    assert loss.shape == (td_errors.shape[0], 8, 8), "huber loss has wrong shape"
+    assert loss.shape == (td_errors.shape[0], 64, 64), "huber loss has wrong shape"
     return loss
     
 
@@ -227,11 +227,11 @@ class DQN():
         Q_targets = rewards.unsqueeze(-1) + (self.GAMMA**self.n_step * Q_targets_next * (1. - dones.unsqueeze(-1)))
         # Get expected Q values from local model
         Q_expected, taus = self.qnetwork_local(states)
-        Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, 8, 1))
+        Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, 64, 1))
 
         # Quantile Huber loss
         td_error = Q_targets - Q_expected
-        assert td_error.shape == (self.BATCH_SIZE, 8, 8), "wrong td error shape"
+        assert td_error.shape == (self.BATCH_SIZE, 64, 64), "wrong td error shape"
         huber_l = calculate_huber_loss(td_error, 1.0)
         quantil_l = abs(taus -(td_error.detach() < 0).float()) * huber_l / 1.0
         
@@ -268,7 +268,7 @@ class DQN():
         Q_targets = munchausen_reward + Q_target
         # Get expected Q values from local model
         q_k, taus = self.qnetwork_local(states)
-        Q_expected = q_k.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, 8, 1))
+        Q_expected = q_k.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, 64, 1))
 
         # Quantile Huber loss
         td_error = Q_targets - Q_expected
@@ -319,7 +319,7 @@ class DQN():
         Q_target = (self.GAMMA**self.n_step * (pi_target * (Q_targets_next-tau_log_pi_next)*(1 - dones.unsqueeze(-1))).sum(2)).unsqueeze(1)
             
         q_k_target = self.qnetwork_target.get_action(states).detach()
-        v_k_target = q_k_target.max(1)[0].unsqueeze(-1) # (8,8,1)
+        v_k_target = q_k_target.max(1)[0].unsqueeze(-1) # (64,64,1)
         tau_log_pik = q_k_target - v_k_target - self.entropy_tau*torch.logsumexp(\
                                                                     (q_k_target - v_k_target)/self.entropy_tau, 1).unsqueeze(-1)
             
@@ -331,7 +331,7 @@ class DQN():
         Q_targets = munchausen_reward + Q_target
         # Get expected Q values from local model
         q_k, taus = self.qnetwork_local(states)
-        Q_expected = q_k.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, 8, 1))
+        Q_expected = q_k.gather(2, actions.unsqueeze(-1).expand(self.BATCH_SIZE, 64, 1))
 
         # Quantile Huber loss
         td_error = Q_targets - Q_expected
@@ -393,13 +393,9 @@ class DQN():
 
         # Get expected Q values from local model
         Q_expected, taus = self.qnetwork_local(states)
-        Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(1, 8, 1))
+        Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(1, 64, 1))
 
         return Q_expected.mean() - (self.GAMMA**self.n_step * Q_targets_next * (1. - dones.unsqueeze(-1))).mean()
-
-        logger.log(Q_targets)
-        logger.log(Q_expected)
-        logger.log()
 
 
 def Test(config_file):
