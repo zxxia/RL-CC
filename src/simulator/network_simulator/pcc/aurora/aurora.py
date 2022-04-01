@@ -83,7 +83,7 @@ QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
 
 '''Environment Settings'''
 # gamma for MDP
-GAMMA = 0.0
+GAMMA = 0.99
 
 
 '''Training settings'''
@@ -453,6 +453,7 @@ def Validation(traces = None, config_file = None, iqn = None):
         iqn.load_model_risk()
 
     RList = []
+    EstR = []
 
     iqn.qnetwork_local.eval()
     iqn.qnetwork_target.eval()
@@ -541,9 +542,25 @@ def Validation(traces = None, config_file = None, iqn = None):
             action_list.append(action.item())
             mi_list.append(sender_mi.send_end - sender_mi.send_start)
             obs_list.append(obs.tolist())            
-            obs, rewards, dones, info = env.step(ACTION_MAP[int(action)])
+            next_obs, rewards, dones, info = env.step(ACTION_MAP[int(action)])
 
             RList.append(rewards)
+
+            Q_targets_next, _ = iqn.qnetwork_target(next_obs)
+            logger.log(Q_targets_next.size())
+            Q_targets_next = Q_targets_next.detach().max(2)[0].unsqueeze(1)
+            logger.log(Q_targets_next.size())
+            Q_targets = rewards.unsqueeze(-1) + (iqn.GAMMA**iqn.n_step * Q_targets_next * (1. - dones.unsqueeze(-1)))
+            logger.log(Q_targets.size())
+
+            # Get expected Q values from local model
+            Q_expected, taus = iqn.qnetwork_local(obs)
+            logger.log(Q_expected.size())
+            Q_expected = Q_expected.gather(2, action.unsqueeze(-1).expand(1, 8, 1))
+            logger.log(Q_expected.size())
+            logger.log()
+
+            obs = next_obs
 
             if dones:
                 break
