@@ -383,6 +383,8 @@ class DQN():
         states = torch.FloatTensor(states)
         next_states = torch.FloatTensor(np.float32(next_states))
         actions = torch.LongTensor(actions).unsqueeze(1)
+
+        logger.log(np.array(rewards))
         rewards = torch.FloatTensor(np.array(rewards)).unsqueeze(1) 
         dones = torch.FloatTensor(np.array(dones)).unsqueeze(1)
 
