@@ -99,8 +99,8 @@ LR = 2e-4
 SAVE = True
 LOAD = False
 # paths for predction net, target net, result log
-PRED_PATH = './model/iqn_pred_net_risk.pkl'
-TARGET_PATH = './model/iqn_target_net_risk.pkl'
+PRED_PATH = './MIQN/iqn_pred_net_risk.pkl'
+TARGET_PATH = './MIQN/iqn_target_net_risk.pkl'
 
 # ACTION_MAP = [-0.5, -0.01, 0.01, 0.5]
 ACTION_MAP = [-0.8727, -0.3685, -0.1698, -0.0816, -0.04, -0.02, -0.01,   
@@ -388,11 +388,14 @@ class DQN():
 
         Q_targets_next, _ = self.qnetwork_target(next_states)
         Q_targets_next = Q_targets_next.detach().max(2)[0].unsqueeze(1)
+        
         Q_targets = rewards.unsqueeze(-1) + (self.GAMMA**self.n_step * Q_targets_next * (1. - dones.unsqueeze(-1)))
 
         # Get expected Q values from local model
         Q_expected, taus = self.qnetwork_local(states)
         Q_expected = Q_expected.gather(2, actions.unsqueeze(-1).expand(1, 8, 1))
+
+        return Q_expected.mean() - (self.GAMMA**self.n_step * Q_targets_next * (1. - dones.unsqueeze(-1))).mean()
 
         logger.log(Q_targets)
         logger.log(Q_expected)
@@ -564,8 +567,7 @@ def Validation(traces = None, config_file = None, iqn = None):
             next_obs, rewards, dones, info = env.step(ACTION_MAP[int(action)])
 
             RList.append(rewards)
-
-            iqn.test(obs, action, rewards, next_obs, dones)
+            EstR.append(iqn.test(obs, action, rewards, next_obs, dones))
 
             obs = next_obs
 
@@ -612,6 +614,9 @@ def Validation(traces = None, config_file = None, iqn = None):
                         avg_sending_rate * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6,
                         tput * BYTES_PER_PACKET * BITS_PER_BYTE / 1e6, avg_lat,
                         loss, np.mean(reward_list), pkt_level_reward])
+
+    logger.log("Estimation Reward: ", EstR)
+    logger.log("Real Reward: ", RList)
 
     return sum(RList) / len(RList)
 

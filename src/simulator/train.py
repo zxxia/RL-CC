@@ -5,7 +5,7 @@ import warnings
 
 from mpi4py.MPI import COMM_WORLD
 
-from simulator.network_simulator.pcc.aurora.aurora import Aurora, Test
+from simulator.network_simulator.pcc.aurora.aurora import Aurora, Test, Validation
 from simulator.network_simulator.pcc.aurora.aurora_ppo import Aurora_PPO, Validation_PPO
 from simulator.network_simulator.pcc.aurora.schedulers import (
     UDRTrainScheduler,
@@ -167,7 +167,7 @@ def main():
     else:
         raise NotImplementedError
 
-    # Test(config_file)
+    Validation(config_file = config_file)
 
     '''
     validation_traces = []
@@ -185,7 +185,7 @@ def main():
     Validation_PPO(validation_traces, aurora_ppo.model)
     '''
 
-    
+    '''
     aurora.train(
         config_file,
         args.total_timesteps,
@@ -193,7 +193,7 @@ def main():
         tb_log_name=args.exp_name,
         validation_traces=val_traces,
     )
-    
+    '''
 
 
 if __name__ == "__main__":
