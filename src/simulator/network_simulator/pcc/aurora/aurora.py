@@ -380,8 +380,8 @@ class DQN():
         self.qnetwork_target.load('./model/iqn_target_net_risk.pkl')
 
     def test(self, states, actions, rewards, next_states, dones):
-        states = torch.FloatTensor(states)
-        next_states = torch.FloatTensor(np.float32(next_states))
+        states = torch.FloatTensor(np.array([states]))
+        next_states = torch.FloatTensor(np.array([next_states]))
         actions = torch.LongTensor(actions).unsqueeze(1)
         rewards = torch.FloatTensor(np.array([rewards])).unsqueeze(1) 
         dones = torch.FloatTensor(np.array([dones])).unsqueeze(1)
