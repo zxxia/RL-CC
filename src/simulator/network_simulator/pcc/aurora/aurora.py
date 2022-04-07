@@ -815,7 +815,8 @@ class Aurora():
                 number += 1
 
                 # store the transition
-                temp = dqn.store_transition(s, a, r, s_, done)
+                # temp = dqn.store_transition(s, a, r, s_, done)
+                temp = dqn.store_transition(s, a, r, s_, False)
 
                 if temp is not None:
                     loss.append(temp.item())
