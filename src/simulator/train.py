@@ -168,7 +168,7 @@ def main():
         raise NotImplementedError
 
     # Validation(config_file = config_file)
-    Test(config_file = config_file)
+    # Test(config_file = config_file)
 
     '''
     validation_traces = []
@@ -186,7 +186,7 @@ def main():
     Validation_PPO(validation_traces, aurora_ppo.model)
     '''
 
-    '''
+    
     aurora.train(
         config_file,
         args.total_timesteps,
@@ -194,7 +194,7 @@ def main():
         tb_log_name=args.exp_name,
         validation_traces=val_traces,
     )
-    '''
+    
 
 
 if __name__ == "__main__":
