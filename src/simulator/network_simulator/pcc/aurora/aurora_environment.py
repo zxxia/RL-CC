@@ -88,14 +88,8 @@ class AuroraEnvironment(gym.Env):
                 should_stop = False
                 break
         
-        if should_stop:
-            reward -= 1e7
-            logger.log("Early Stop")
-        else:
+        if not should_stop:
             should_stop = self.current_trace.is_finished(self.net.get_cur_time())
-            if should_stop:
-                bonus = sum(self.reward_list) * 99.0 / len(self.reward_list)
-                reward += bonus
 
         self.reward_sum += reward
         self.reward_list.append(reward)
