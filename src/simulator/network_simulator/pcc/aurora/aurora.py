@@ -791,7 +791,7 @@ class Aurora():
                 s_ = np.array(s_)
                 RList.append(r)
 
-                if abs(r) > 2000000:
+                if abs(r) > 2000000 and not done:
                     logger.log("Warning")
                     logger.log(s)
                     logger.log(s_)
