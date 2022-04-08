@@ -79,7 +79,7 @@ class AuroraEnvironment(gym.Env):
         should_stop = self.current_trace.is_finished(self.net.get_cur_time())
 
         capacity = self.links[0].pkt_in_queue / self.links[0].queue_size
-        if capacity > 0.95:
+        if self.steps_taken > 10 and capacity > 0.95:
             should_stop = True
             reward -= 1e7
             logger.log("Early Stop")
