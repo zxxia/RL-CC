@@ -824,7 +824,7 @@ class Aurora():
                 s = s_
 
             # logger.log log and save
-            if len(loss) != 0 and step > 100 and step % SAVE_FREQ == 0:
+            if len(loss) != 0 and step > SAVE_FREQ and step % SAVE_FREQ == 0:
                 time_interval = round(time.time() - start_time, 2)
 
                 # logger.log log
