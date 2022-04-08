@@ -1,5 +1,6 @@
 from stable_baselines import logger
 from typing import List
+from collections import deque
 
 import gym
 import numpy as np
@@ -53,6 +54,7 @@ class AuroraEnvironment(gym.Env):
         self.reward_sum = 0.0
         self.reward_ewma = 0.0
         self.reward_list = []
+        self.cap_list = deque(maxlen=4)
 
         self.episodes_run = -1
 
@@ -76,16 +78,24 @@ class AuroraEnvironment(gym.Env):
         self.steps_taken += 1
         sender_obs = self._get_all_sender_obs()
 
-        should_stop = self.current_trace.is_finished(self.net.get_cur_time())
-
         capacity = self.links[0].pkt_in_queue / self.links[0].queue_size
-        if capacity > 0.95:
-            should_stop = True
-            # reward -= 1e7
+        self.cap_list.append(capacity)
+
+        should_stop = True
+
+        for cap in self.cap_list:
+            if cap < 0.9:
+                should_stop = False
+                break
+        
+        if should_stop:
+            reward -= 1e7
             logger.log("Early Stop")
-        elif should_stop == True:
-            bonus = sum(self.reward_list) * 99.0 / len(self.reward_list)
-            reward += bonus
+        else:
+            should_stop = self.current_trace.is_finished(self.net.get_cur_time())
+            if should_stop:
+                bonus = sum(self.reward_list) * 99.0 / len(self.reward_list)
+                reward += bonus
 
         self.reward_sum += reward
         self.reward_list.append(reward)
@@ -112,6 +122,7 @@ class AuroraEnvironment(gym.Env):
         self.reward_ewma += 0.01 * self.reward_sum
         self.reward_sum = 0.0
         self.reward_list = []
+        self.cap_list = deque(maxlen=4)
 
         return self._get_all_sender_obs()
 
