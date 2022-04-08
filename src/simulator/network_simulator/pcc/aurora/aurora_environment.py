@@ -78,6 +78,7 @@ class AuroraEnvironment(gym.Env):
         self.steps_taken += 1
         sender_obs = self._get_all_sender_obs()
 
+        '''
         capacity = self.links[0].pkt_in_queue / self.links[0].queue_size
         self.cap_list.append(capacity)
 
@@ -92,7 +93,10 @@ class AuroraEnvironment(gym.Env):
             reward -= 1e4
         else:
             should_stop = self.current_trace.is_finished(self.net.get_cur_time())
+        '''
 
+        should_stop = self.current_trace.is_finished(self.net.get_cur_time())
+        
         self.reward_sum += reward
         self.reward_list.append(reward)
 
