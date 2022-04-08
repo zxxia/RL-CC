@@ -81,7 +81,7 @@ class AuroraEnvironment(gym.Env):
         capacity = self.links[0].pkt_in_queue / self.links[0].queue_size
         if capacity > 0.95:
             should_stop = True
-            reward -= 1e7
+            # reward -= 1e7
             logger.log("Early Stop")
         elif should_stop == True:
             bonus = sum(self.reward_list) * 99.0 / len(self.reward_list)
