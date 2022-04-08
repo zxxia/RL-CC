@@ -1,3 +1,4 @@
+from stable_baselines import logger
 from typing import List
 
 import gym
@@ -5,6 +6,7 @@ import numpy as np
 from gym import spaces
 from gym.envs.registration import register
 from gym.utils import seeding
+from torch import true_divide
 
 from common import sender_obs
 from simulator.network_simulator.constants import BYTES_PER_PACKET
@@ -50,6 +52,7 @@ class AuroraEnvironment(gym.Env):
 
         self.reward_sum = 0.0
         self.reward_ewma = 0.0
+        self.reward_list = []
 
         self.episodes_run = -1
 
@@ -75,7 +78,18 @@ class AuroraEnvironment(gym.Env):
 
         should_stop = self.current_trace.is_finished(self.net.get_cur_time())
 
+        capacity = self.links[0].pkt_in_queue / self.links[0].queue_size
+        if capacity > 0.95:
+            should_stop = True
+            reward -= 1e7
+            logger.log("Early Stop")
+        elif should_stop == True:
+            bonus = sum(self.reward_list) * 99.0 / len(self.reward_list)
+            reward += bonus
+
         self.reward_sum += reward
+        self.reward_list.append(reward)
+
         return sender_obs, reward, should_stop, {}
 
     def reset(self):
@@ -97,6 +111,8 @@ class AuroraEnvironment(gym.Env):
         self.reward_ewma *= 0.99
         self.reward_ewma += 0.01 * self.reward_sum
         self.reward_sum = 0.0
+        self.reward_list = []
+
         return self._get_all_sender_obs()
 
 
