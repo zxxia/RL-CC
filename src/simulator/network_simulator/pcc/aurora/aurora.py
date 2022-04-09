@@ -90,7 +90,7 @@ GAMMA = 0.99
 # mini-batch size
 BATCH_SIZE = 256
 # learning rage
-LR = 5e-4
+LR = 2e-4
 
 
 '''Save&Load Settings'''
