@@ -370,7 +370,7 @@ def generate_trace(duration_range: Tuple[float, float],
         T_s_range) == 2 and T_s_range[0] <= T_s_range[1]
     assert delay_noise_range is not None and len(
         delay_noise_range) == 2 and delay_noise_range[0] <= delay_noise_range[1]
-    T_s = float(np.random.uniform(T_s_range[0], T_s_range[1], 1))
+    T_s = float(np.random.uniform(2 * 0.001 * delay_range[1], T_s_range[1], 1))
     delay_noise = float(np.random.uniform(delay_noise_range[0], delay_noise_range[1], 1))
 
     timestamps, bandwidths, delays = generate_bw_delay_series(
