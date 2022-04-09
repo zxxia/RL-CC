@@ -76,7 +76,7 @@ MEMORY_CAPACITY = int(2e+5)
 LEARN_FREQ = 4
 # quantile numbers for IQN
 N_QUANT = 64
-N_STATE = 40
+N_STATE = 20
 N_ACTION = 14
 # quantiles
 QUANTS = np.linspace(0.0, 1.0, N_QUANT + 1)[1:]
